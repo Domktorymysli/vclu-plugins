@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "vCLU Official Plugins",
+  "description": "Oficjalne pluginy dla Virtual CLU",
+  "author": "Domktorymysli",
+  "url": "https://github.com/Domktorymysli/vclu-plugins",
+  "updated": "2025-01-01T00:00:00Z",
+  "plugins": [
+    {
+      "id": "weather",
+      "name": "Weather Plugin",
+      "version": "1.0.0",
+      "description": "Dane pogodowe z OpenWeatherMap",
+      "author": "tytus",
+      "path": "plugins/weather",
+      "tags": ["weather", "automation", "sensors"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
+    }
+  ]
+}
