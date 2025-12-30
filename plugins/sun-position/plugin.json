@@ -1,0 +1,64 @@
+{
+  "id": "sun-position",
+  "name": "Sun Position & Astronomy",
+  "version": "1.0.0",
+  "description": "Pozycja słońca, wschody/zachody, fazy księżyca - do automatyzacji rolet i oświetlenia",
+  "author": "vCLU",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["timer"]
+  },
+
+  "config": {
+    "latitude": {
+      "type": "number",
+      "required": true,
+      "description": "Szerokość geograficzna (np. 52.2297 dla Warszawy)"
+    },
+    "longitude": {
+      "type": "number",
+      "required": true,
+      "description": "Długość geograficzna (np. 21.0122 dla Warszawy)"
+    },
+    "timezoneOffset": {
+      "type": "number",
+      "default": 1,
+      "description": "Przesunięcie strefy czasowej względem UTC (1 dla Polski zimą, 2 latem)"
+    },
+    "sunriseOffset": {
+      "type": "number",
+      "default": 0,
+      "description": "Offset eventu wschodu słońca w minutach (ujemny = przed wschodem)"
+    },
+    "sunsetOffset": {
+      "type": "number",
+      "default": 0,
+      "description": "Offset eventu zachodu słońca w minutach (ujemny = przed zachodem)"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "sun": {
+        "type": "SunData",
+        "description": "Dane słońca (wschód, zachód, pozycja)"
+      },
+      "moon": {
+        "type": "MoonData",
+        "description": "Dane księżyca (faza, iluminacja)"
+      }
+    },
+    "events": [
+      { "name": "sun:rise", "description": "Wschód słońca" },
+      { "name": "sun:set", "description": "Zachód słońca" },
+      { "name": "sun:noon", "description": "Południe słoneczne" },
+      { "name": "sun:position", "description": "Zmiana pozycji słońca (co 10 min)" }
+    ]
+  }
+}

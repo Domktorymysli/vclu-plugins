@@ -1,0 +1,55 @@
+{
+  "id": "salda-recuperator",
+  "name": "Salda Recuperator",
+  "version": "1.0.0",
+  "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie",
+  "author": "vCLU",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer", "json"]
+  },
+
+  "config": {
+    "ip": {
+      "type": "string",
+      "required": true,
+      "description": "Adres IP rekuperatora (np. 192.168.0.100)"
+    },
+    "login": {
+      "type": "string",
+      "required": true,
+      "description": "Login do rekuperatora"
+    },
+    "password": {
+      "type": "string",
+      "required": true,
+      "description": "Hasło do rekuperatora"
+    },
+    "interval": {
+      "type": "number",
+      "default": 60,
+      "min": 10,
+      "max": 3600,
+      "description": "Interwał odczytu danych w sekundach"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "data": {
+        "type": "RecuperatorData",
+        "description": "Aktualne dane rekuperatora"
+      }
+    },
+    "events": [
+      { "name": "salda:updated", "description": "Dane zostały zaktualizowane" },
+      { "name": "salda:error", "description": "Błąd komunikacji z rekuperatorem" }
+    ]
+  }
+}

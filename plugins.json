@@ -42,6 +42,30 @@
       "requires": {
         "vclu": ">=1.0.0"
       }
+    },
+    {
+      "id": "salda-recuperator",
+      "name": "Salda Recuperator",
+      "version": "1.0.0",
+      "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie",
+      "author": "vCLU Team",
+      "path": "plugins/salda-recuperator",
+      "tags": ["hvac", "recuperator", "ventilation", "salda", "automation"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
+    },
+    {
+      "id": "sun-position",
+      "name": "Sun Position & Astronomy",
+      "version": "1.0.0",
+      "description": "Pozycja słońca, wschody/zachody, fazy księżyca - automatyzacja rolet",
+      "author": "vCLU Team",
+      "path": "plugins/sun-position",
+      "tags": ["sun", "moon", "astronomy", "blinds", "automation", "sunrise", "sunset"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }
