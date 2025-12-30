@@ -130,10 +130,10 @@ Panel.fanLevel:setValue(salda:getFanSpeed())
 
 ## Mapowanie prędkości wentylatora
 
-| Poziom | Wartość raw | Opis    |
-|--------|-------------|---------|
-| 0      | 0           | Wyłączony |
-| 1      | 30          | Niski   |
-| 2      | 60          | Średni  |
-| 3      | 80          | Wysoki  |
-| 4      | 100         | Maksymalny |
+| Poziom   | Wartość raw   | Opis       |
+|----------|---------------|------------|
+| 0        | 0             | Wyłączony  |
+| 1        | 30            | Niski      |
+| 2        | 60            | Średni     |
+| 3        | 80            | Wysoki     |
+| 4        | 100           | Maksymalny |

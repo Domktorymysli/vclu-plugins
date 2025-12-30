@@ -91,10 +91,20 @@ local function buildAuthHeader(login, password)
     return "Basic " .. encoded
 end
 
---- Make HTTP request to recuperator
+--- Normalize IP address (remove protocol and trailing slash)
+local function normalizeIp(ip)
+    -- Remove http:// or https:// prefix
+    ip = ip:gsub("^https?://", "")
+    -- Remove trailing slash
+    ip = ip:gsub("/$", "")
+    return ip
+end
+
+--- Make HTTP request to recuperator (async)
 local function request(func, callback)
     local config = salda.config
-    local url = "http://" .. config.ip .. "/" .. func
+    local ip = normalizeIp(config.ip)
+    local url = "http://" .. ip .. "/" .. func
     local authHeader = buildAuthHeader(config.login, config.password)
 
     -- Use plugin's httpRequest with custom headers
@@ -116,6 +126,25 @@ local function request(func, callback)
         end
         callback(response.body, nil)
     end)
+end
+
+--- Make synchronous HTTP request to recuperator
+local function requestSync(func)
+    local config = salda.config
+    local ip = normalizeIp(config.ip)
+    local url = "http://" .. ip .. "/" .. func
+    local authHeader = buildAuthHeader(config.login, config.password)
+
+    -- Use HTTP module directly for sync request
+    local client = HTTP:new("salda-sync")
+    client:setTimeout(5000)
+    client:setHeader("Authorization", authHeader)
+
+    local response = client:GET(url)
+    if not response or response.status ~= 200 then
+        return nil, "HTTP " .. tostring(response and response.status or "error")
+    end
+    return response.body, nil
 end
 
 --- Parse data response (semicolon-separated values)
@@ -388,9 +417,59 @@ function salda:setFanSpeed(level)
     end)
 end
 
---- Force refresh data
+--- Force refresh data (async)
 function salda:refresh()
     refresh()
+end
+
+--- Force refresh data (synchronous) - blocks until data is fetched
+-- @return table Data table with all values, or nil on error
+-- @return string Error message if failed
+function salda:refreshSync()
+    -- Fetch main data
+    local body, err = requestSync("FUNC(4,1,4,0,24)")
+    if err then
+        data.error = err
+        salda:log("error", "Sync fetch failed: " .. tostring(err))
+        return nil, err
+    end
+
+    local parts = parseDataResponse(body)
+    if #parts < 17 then
+        local parseErr = "Invalid data response"
+        data.error = parseErr
+        return nil, parseErr
+    end
+
+    -- Fetch temperature setpoint
+    local tempBody, tempErr = requestSync("FUNC(4,1,3,0,111)")
+    local tempSetpoint = 0
+    if not tempErr and tempBody then
+        local tempParts = parseDataResponse(tempBody)
+        if #tempParts >= 2 then
+            tempSetpoint = tonumber(tempParts[2]) or 0
+        end
+    end
+
+    -- Update internal state
+    data.supplyAir = parseTemp(parts[1])
+    data.exhaustAir = parseTemp(parts[7])
+    data.extractAir = parseTemp(parts[7])
+    data.outsideAir = parseTemp(parts[10])
+    data.humidity = parsePercent(parts[14])
+    data.supplyFanSpeed = tonumber(parts[16]) or 0
+    data.extractFanSpeed = tonumber(parts[17]) or 0
+    data.fanSpeed = parseFanSpeed(parts[16])
+    data.temperature = tempSetpoint
+    data.lastUpdate = os.time()
+    data.error = nil
+
+    salda:log("info", string.format(
+        "Sync refresh: supply=%.1f°C, outside=%.1f°C, humidity=%.0f%%, fan=%d",
+        data.supplyAir, data.outsideAir, data.humidity * 100, data.fanSpeed
+    ))
+
+    return self:getData(), nil
 end
 
 return salda
