@@ -189,14 +189,17 @@ timeSync:onInit(function(config)
     config.autoSync = config.autoSync ~= false  -- default true
 
     timeSync:log("info", string.format(
-        "Initializing: timezone=%s, interval=%ds",
+        "Initializing: timezone=%s, interval=%s, autoSync=%s",
         config.timezone,
-        config.interval
+        config.interval > 0 and (config.interval .. "s") or "manual",
+        tostring(config.autoSync)
     ))
 
-    -- Setup refresh timer
-    local intervalMs = config.interval * 1000
-    refreshTimerId = timeSync:setInterval(intervalMs, sync)
+    -- Setup refresh timer (only if interval > 0)
+    if config.interval > 0 then
+        local intervalMs = config.interval * 1000
+        refreshTimerId = timeSync:setInterval(intervalMs, sync)
+    end
 
     -- Initial sync after short delay (if autoSync enabled)
     if config.autoSync then

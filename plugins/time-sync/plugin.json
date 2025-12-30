@@ -24,9 +24,9 @@
     "interval": {
       "type": "number",
       "default": 3600,
-      "min": 60,
+      "min": 0,
       "max": 86400,
-      "description": "Interwał synchronizacji w sekundach"
+      "description": "Interwał synchronizacji w sekundach (0 = tylko manualny sync)"
     },
     "autoSync": {
       "type": "boolean",

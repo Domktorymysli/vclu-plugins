@@ -7,8 +7,19 @@ Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI).
 | Parametr     | Typ         | Domyślnie       | Opis                              |
 |--------------|-------------|-----------------|-----------------------------------|
 | `timezone`   | string      | `Europe/Warsaw` | Strefa czasowa IANA               |
-| `interval`   | number      | `3600`          | Interwał synchronizacji (sekundy) |
+| `interval`   | number      | `3600`          | Interwał synchronizacji (sekundy, 0 = manualny) |
 | `autoSync`   | boolean     | `true`          | Auto-sync przy starcie            |
+
+### Tryby synchronizacji
+
+| autoSync | interval | Zachowanie |
+|----------|----------|------------|
+| `true`   | `3600`   | Sync przy starcie + co godzinę (domyślne) |
+| `false`  | `3600`   | Bez sync przy starcie, potem co godzinę |
+| `true`   | `0`      | Tylko sync przy starcie |
+| `false`  | `0`      | Tylko manualny `time:sync()`, używa lokalnego `os.time()` |
+
+**Uwaga:** Bez synchronizacji (`autoSync=false`, `interval=0`) plugin zwraca czas systemowy maszyny na której działa vCLU.
 
 ### Przykładowe strefy czasowe
 
