@@ -2,7 +2,14 @@
 
 Przykładowy plugin pokazujący jak pisać własne pluginy dla vCLU.
 
-## Szybki start
+## Instalacja z repozytorium
+
+1. Otwórz panel vCLU: `http://<adres-vclu>:8080/plugins`
+2. W sekcji "Available Plugins" znajdź "Example Plugin"
+3. Kliknij "Install"
+4. Kliknij "Enable"
+
+## Tworzenie własnego pluginu
 
 ### 1. Utwórz katalog pluginu
 
@@ -127,6 +134,24 @@ plugin:on("eventName", function(...) ... end)
 
 -- Emitowanie
 plugin:emit("eventName", data)
+```
+
+### Dostęp do innych pluginów
+
+```lua
+-- Pobierz instancję innego pluginu
+local weather = Plugin.get("@vclu/weather")
+
+if weather then
+    local temp = weather:getTemperature()
+    plugin:log("info", "Temperatura: " .. tostring(temp))
+end
+
+-- Lista wszystkich załadowanych pluginów
+local plugins = Plugin.list()
+for _, p in ipairs(plugins) do
+    plugin:log("info", "Plugin: " .. p.name .. " v" .. p.version)
+end
 ```
 
 ### Logowanie

@@ -210,10 +210,39 @@ plugin:emit("example:myEvent", {
     timestamp = os.time()
 })
 
--- Nasłuchiwanie na własny event (z innego pluginu)
-plugin:on("weather:updated", function(data)
-    plugin:log("info", "Weather updated: " .. tostring(data.temp))
+-- Nasłuchiwanie na event z innego pluginu (np. weather)
+plugin:on("weather:changed", function(data)
+    plugin:log("info", "Weather changed: " .. tostring(data.temp) .. "°C")
 end)
+
+]]
+
+
+-- ============================================
+-- PRZYKŁAD: Dostęp do innych pluginów
+-- ============================================
+--[[
+
+-- Pobierz instancję innego pluginu po fullId
+local weather = Plugin.get("@vclu/weather")
+
+if weather then
+    -- Wywołaj metody pluginu
+    local temp = weather:getTemperature()
+    local condition = weather:getCondition()
+    plugin:log("info", "Pogoda: " .. tostring(temp) .. "°C, " .. tostring(condition))
+else
+    plugin:log("warn", "Plugin weather nie jest załadowany")
+end
+
+-- Można też użyć krótkiego id (jeśli unikalny)
+local w = Plugin.get("weather")
+
+-- Lista wszystkich załadowanych pluginów
+local allPlugins = Plugin.list()
+for _, p in ipairs(allPlugins) do
+    plugin:log("debug", "Loaded: " .. p.id .. " (" .. p.name .. " v" .. p.version .. ")")
+end
 
 ]]
 
