@@ -1,0 +1,81 @@
+name: Validate Plugins
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate plugins.json
+        run: |
+          if [ ! -f "plugins.json" ]; then
+            echo "ERROR: Missing plugins.json in root"
+            exit 1
+          fi
+
+          if ! jq . plugins.json > /dev/null 2>&1; then
+            echo "ERROR: Invalid JSON in plugins.json"
+            exit 1
+          fi
+
+          echo "OK: plugins.json is valid"
+
+      - name: Validate plugin manifests
+        run: |
+          for dir in plugins/*/; do
+            echo "Validating $dir"
+
+            # Check plugin.json exists
+            if [ ! -f "$dir/plugin.json" ]; then
+              echo "ERROR: Missing plugin.json in $dir"
+              exit 1
+            fi
+
+            # Validate JSON syntax
+            if ! jq . "$dir/plugin.json" > /dev/null 2>&1; then
+              echo "ERROR: Invalid JSON in $dir/plugin.json"
+              exit 1
+            fi
+
+            # Check required fields
+            if ! jq -e '.id and .name and .version' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: Missing required fields (id, name, version) in $dir/plugin.json"
+              exit 1
+            fi
+
+            # Check init.lua exists
+            if [ ! -f "$dir/init.lua" ]; then
+              echo "ERROR: Missing init.lua in $dir"
+              exit 1
+            fi
+
+            # Verify plugin is listed in plugins.json
+            plugin_id=$(jq -r '.id' "$dir/plugin.json")
+            if ! jq -e ".plugins[] | select(.id == \"$plugin_id\")" plugins.json > /dev/null; then
+              echo "WARNING: Plugin $plugin_id not listed in plugins.json"
+            fi
+
+            echo "OK: $dir"
+          done
+
+          echo "All plugins validated successfully!"
+
+      - name: Lua syntax check
+        run: |
+          for dir in plugins/*/; do
+            for file in "$dir"*.lua; do
+              if [ -f "$file" ]; then
+                echo "Checking $file"
+                if command -v lua5.3 &> /dev/null; then
+                  lua5.3 -p "$file" || exit 1
+                elif command -v lua &> /dev/null; then
+                  lua -p "$file" 2>/dev/null || true
+                fi
+              fi
+            done
+          done

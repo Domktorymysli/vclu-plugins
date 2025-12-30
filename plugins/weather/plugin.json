@@ -1,0 +1,58 @@
+{
+  "id": "weather",
+  "name": "Weather Plugin",
+  "version": "1.0.0",
+  "author": "tytus",
+  "license": "MIT",
+  "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer", "json"]
+  },
+
+  "config": {
+    "apiKey": {
+      "type": "string",
+      "required": true,
+      "env": "OPENWEATHERMAP_API_KEY",
+      "description": "OpenWeatherMap API key"
+    },
+    "city": {
+      "type": "string",
+      "default": "Warsaw",
+      "description": "Miasto do sprawdzania pogody"
+    },
+    "interval": {
+      "type": "number",
+      "default": 3600,
+      "min": 300,
+      "max": 86400,
+      "description": "Interwał odświeżania w sekundach"
+    },
+    "units": {
+      "type": "string",
+      "enum": ["metric", "imperial"],
+      "default": "metric"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "weather": {
+        "type": "WeatherProvider",
+        "description": "Główny obiekt pogodowy"
+      }
+    },
+    "events": [
+      {
+        "name": "OnWeatherChange",
+        "description": "Emitowany gdy zmieni się pogoda"
+      },
+      {
+        "name": "OnRainAlert",
+        "description": "Emitowany gdy zacznie padać"
+      }
+    ]
+  }
+}
