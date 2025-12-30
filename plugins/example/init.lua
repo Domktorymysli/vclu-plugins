@@ -67,11 +67,16 @@ plugin:httpGet("https://api.example.com/data", function(response, err)
         return
     end
 
-    -- response to string z odpowiedzią
-    plugin:log("info", "Response: " .. response)
+    -- response to tabela z polami: status, body, headers
+    if response.status ~= 200 then
+        plugin:log("error", "HTTP status: " .. tostring(response.status))
+        return
+    end
 
-    -- Parsowanie JSON
-    local data = JSON:decode(response)
+    plugin:log("info", "Response body: " .. response.body)
+
+    -- Parsowanie JSON z body
+    local data = JSON:decode(response.body)
     if data then
         plugin:log("info", "Parsed value: " .. tostring(data.value))
     end
@@ -96,7 +101,11 @@ plugin:httpPost("https://api.example.com/data", payload, function(response, err)
         return
     end
 
-    plugin:log("info", "POST response: " .. response)
+    if response.status == 200 then
+        plugin:log("info", "POST successful: " .. response.body)
+    else
+        plugin:log("error", "POST failed with status: " .. response.status)
+    end
 end)
 
 ]]

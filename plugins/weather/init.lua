@@ -102,12 +102,15 @@ local function refresh()
 
     weather:log("debug", "Fetching weather from: " .. url)
 
-    -- Use HttpClient for HTTP request
-    local req = HttpClient:new()
-    req:get(url)
-    req:onResponse(function(response)
-        if response.status ~= 200 then
-            weather:log("error", "Weather API error: " .. tostring(response.status))
+    -- Use plugin's httpGet API (async with callback)
+    weather:httpGet(url, function(response, err)
+        if err then
+            weather:log("error", "Weather fetch failed: " .. tostring(err))
+            return
+        end
+
+        if not response or response.status ~= 200 then
+            weather:log("error", "Weather API error: " .. tostring(response and response.status or "no response"))
             return
         end
 
@@ -121,10 +124,6 @@ local function refresh()
             weather:log("error", "Failed to parse weather data")
         end
     end)
-    req:onError(function(err)
-        weather:log("error", "Weather fetch failed: " .. tostring(err))
-    end)
-    req:send()
 end
 
 -- ============================================

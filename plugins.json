@@ -30,6 +30,18 @@
       "requires": {
         "vclu": ">=1.0.0"
       }
+    },
+    {
+      "id": "time-sync",
+      "name": "Time Sync",
+      "version": "1.0.0",
+      "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
+      "author": "vCLU Team",
+      "path": "plugins/time-sync",
+      "tags": ["time", "ntp", "sync", "clock", "automation"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }
