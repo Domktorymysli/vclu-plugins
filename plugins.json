@@ -66,6 +66,18 @@
       "requires": {
         "vclu": ">=1.0.0"
       }
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram Notifications",
+      "version": "1.0.0",
+      "description": "Powiadomienia przez Telegram Bot API",
+      "author": "vCLU Team",
+      "path": "plugins/telegram",
+      "tags": ["notifications", "telegram", "alerts", "messaging"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }
