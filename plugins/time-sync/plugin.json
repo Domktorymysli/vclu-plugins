@@ -2,35 +2,59 @@
   "id": "time-sync",
   "name": "Time Sync",
   "version": "1.0.0",
-  "description": "Synchronizes system time from internet time servers (WorldTimeAPI)",
+  "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
   "author": "vCLU",
   "license": "MIT",
-  "minVcluVersion": "0.1.0",
-  "tags": ["time", "ntp", "sync", "clock"],
-  "configSchema": [
-    {
-      "key": "timezone",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer", "json"]
+  },
+
+  "config": {
+    "timezone": {
       "type": "string",
-      "label": "Timezone",
-      "description": "IANA timezone (e.g., Europe/Warsaw, America/New_York)",
-      "required": false,
-      "default": "Europe/Warsaw"
+      "default": "Europe/Warsaw",
+      "description": "Strefa czasowa IANA (np. Europe/Warsaw, America/New_York, UTC)"
     },
-    {
-      "key": "interval",
+    "interval": {
       "type": "number",
-      "label": "Sync interval (seconds)",
-      "description": "How often to sync time (default: 3600 = 1 hour)",
-      "required": false,
-      "default": "3600"
+      "default": 3600,
+      "min": 60,
+      "max": 86400,
+      "description": "Interwał synchronizacji w sekundach"
     },
-    {
-      "key": "autoSync",
+    "autoSync": {
       "type": "boolean",
-      "label": "Auto sync on start",
-      "description": "Automatically sync time when plugin starts",
-      "required": false,
-      "default": "true"
+      "default": true,
+      "description": "Automatyczna synchronizacja przy starcie"
     }
-  ]
+  },
+
+  "exports": {
+    "objects": {
+      "current": {
+        "type": "TimeData",
+        "description": "Aktualne dane czasu"
+      }
+    },
+    "events": [
+      {
+        "name": "time:synced",
+        "description": "Emitowany po synchronizacji czasu"
+      },
+      {
+        "name": "time:hourChanged",
+        "description": "Emitowany gdy zmieni się godzina"
+      },
+      {
+        "name": "time:error",
+        "description": "Emitowany przy błędzie synchronizacji"
+      }
+    ]
+  }
 }
