@@ -18,6 +18,18 @@
       "requires": {
         "vclu": ">=1.0.0"
       }
+    },
+    {
+      "id": "example",
+      "name": "Example Plugin",
+      "version": "1.0.0",
+      "description": "Przykładowy plugin - szablon do tworzenia własnych pluginów",
+      "author": "vCLU Team",
+      "path": "plugins/example",
+      "tags": ["example", "template", "tutorial"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }
