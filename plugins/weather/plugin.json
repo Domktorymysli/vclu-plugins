@@ -6,6 +6,10 @@
   "license": "MIT",
   "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
 
+  "docs": [
+    { "title": "Getting Started", "file": "README.md" }
+  ],
+
   "requires": {
     "vclu": ">=1.0.0",
     "modules": ["http", "timer", "json"]

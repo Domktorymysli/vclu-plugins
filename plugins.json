@@ -1,6 +1,7 @@
 {
   "version": 1,
   "name": "vCLU Official Plugins",
+  "namespace": "vclu",
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
