@@ -4,7 +4,7 @@
 
 local telegram = Plugin:new("telegram", {
     name = "Telegram Notifications",
-    version = "1.2.0",
+    version = "1.3.0",
     description = "Telegram Bot - send and receive messages"
 })
 
@@ -14,6 +14,7 @@ local telegram = Plugin:new("telegram", {
 
 local DEFAULT_API_BASE = "https://api.telegram.org/bot"
 local apiBase = DEFAULT_API_BASE  -- Will be set in onInit based on proxyUrl config
+local skipSSLVerify = false       -- Will be set in onInit based on insecureSkipVerify config
 
 -- ============================================
 -- INTERNAL STATE
@@ -76,7 +77,8 @@ local function apiRequest(method, params, callback)
             ["Content-Type"] = "application/x-www-form-urlencoded"
         },
         body = queryString,
-        timeout = 10000
+        timeout = 10000,
+        verifySSL = not skipSSLVerify
     }, function(response, err)
         if err then
             stats.lastError = err
@@ -261,6 +263,12 @@ telegram:onInit(function(config)
         telegram:log("info", "Using proxy: " .. config.proxyUrl:gsub("://[^:]+:[^@]+@", "://***:***@"))
     else
         apiBase = DEFAULT_API_BASE
+    end
+
+    -- Setup SSL verification
+    skipSSLVerify = config.insecureSkipVerify == true
+    if skipSSLVerify then
+        telegram:log("warn", "SSL verification disabled (insecureSkipVerify=true)")
     end
 
     telegram:log("info", "Initialized" .. (config.chatId and (" with chat_id: " .. config.chatId) or ""))

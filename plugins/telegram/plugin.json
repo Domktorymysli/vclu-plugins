@@ -1,7 +1,7 @@
 {
   "id": "telegram",
   "name": "Telegram Notifications",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Wysyłanie i odbieranie wiadomości przez Telegram Bot API",
   "author": "vCLU",
   "license": "MIT",
@@ -25,6 +25,11 @@
       "type": "string",
       "required": false,
       "description": "URL proxy z basic auth (np. https://user:pass@proxy.example.com/telegram)"
+    },
+    "insecureSkipVerify": {
+      "type": "boolean",
+      "default": false,
+      "description": "Wyłącz weryfikację SSL (dla self-signed certyfikatów proxy)"
     },
     "chatId": {
       "type": "string",
