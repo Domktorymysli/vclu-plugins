@@ -343,8 +343,8 @@ local function scheduleEvents()
     local t = os.date("*t")
     local nowMins = currentMinutes()
 
-    local sunriseOffset = config.sunriseOffset or 0
-    local sunsetOffset = config.sunsetOffset or 0
+    local sunriseOffset = tonumber(config.sunriseOffset) or 0
+    local sunsetOffset = tonumber(config.sunsetOffset) or 0
 
     -- Clear existing timers
     if timers.sunrise then sun:clearTimer(timers.sunrise) end

@@ -1,18 +1,19 @@
 --- Telegram Notifications Plugin for vCLU
--- Send notifications via Telegram Bot API
+-- Send and receive messages via Telegram Bot API
 -- @module plugins.telegram
 
 local telegram = Plugin:new("telegram", {
     name = "Telegram Notifications",
-    version = "1.0.0",
-    description = "Telegram Bot notifications"
+    version = "1.2.0",
+    description = "Telegram Bot - send and receive messages"
 })
 
 -- ============================================
 -- CONSTANTS
 -- ============================================
 
-local API_BASE = "https://api.telegram.org/bot"
+local DEFAULT_API_BASE = "https://api.telegram.org/bot"
+local apiBase = DEFAULT_API_BASE  -- Will be set in onInit based on proxyUrl config
 
 -- ============================================
 -- INTERNAL STATE
@@ -20,8 +21,16 @@ local API_BASE = "https://api.telegram.org/bot"
 
 local stats = {
     messagesSent = 0,
+    messagesReceived = 0,
     lastMessageTime = 0,
     lastError = nil
+}
+
+local polling = {
+    enabled = false,
+    offset = 0,
+    timer = nil,
+    interval = 5000  -- 5 seconds default
 }
 
 -- ============================================
@@ -43,7 +52,7 @@ end
 --- Build API URL
 local function buildUrl(method)
     local config = telegram.config
-    return API_BASE .. config.botToken .. "/" .. method
+    return apiBase .. config.botToken .. "/" .. method
 end
 
 --- Make API request
@@ -54,7 +63,7 @@ local function apiRequest(method, params, callback)
     local body = {}
     for k, v in pairs(params or {}) do
         if v ~= nil then
-            table.insert(body, k .. "=" .. urlEncode(v))
+            table.insert(body, k .. "=" .. urlEncode(tostring(v)))
         end
     end
     local queryString = table.concat(body, "&")
@@ -105,6 +114,123 @@ local function apiRequest(method, params, callback)
     end)
 end
 
+--- Process incoming update
+local function processUpdate(update)
+    -- Handle message
+    if update.message then
+        local msg = update.message
+        local data = {
+            messageId = msg.message_id,
+            chatId = msg.chat and msg.chat.id,
+            chatType = msg.chat and msg.chat.type,  -- private, group, supergroup, channel
+            from = {
+                id = msg.from and msg.from.id,
+                username = msg.from and msg.from.username,
+                firstName = msg.from and msg.from.first_name,
+                lastName = msg.from and msg.from.last_name,
+                isBot = msg.from and msg.from.is_bot
+            },
+            text = msg.text,
+            date = msg.date,
+            replyTo = msg.reply_to_message and msg.reply_to_message.message_id
+        }
+
+        -- Check if it's a command
+        if msg.text and msg.text:sub(1, 1) == "/" then
+            local command = msg.text:match("^(/[%w_]+)")
+            local args = msg.text:match("^/[%w_]+%s+(.+)$")
+            data.command = command
+            data.args = args
+
+            telegram:log("debug", "Command received: " .. command .. " from " .. (data.from.username or data.from.id))
+            telegram:emit("telegram:command", data)
+        end
+
+        stats.messagesReceived = stats.messagesReceived + 1
+        telegram:log("debug", "Message received from " .. (data.from.username or tostring(data.from.id)) .. ": " .. (msg.text or "[non-text]"):sub(1, 50))
+        telegram:emit("telegram:message", data)
+    end
+
+    -- Handle callback query (inline button press)
+    if update.callback_query then
+        local cb = update.callback_query
+        local data = {
+            callbackId = cb.id,
+            messageId = cb.message and cb.message.message_id,
+            chatId = cb.message and cb.message.chat and cb.message.chat.id,
+            from = {
+                id = cb.from and cb.from.id,
+                username = cb.from and cb.from.username,
+                firstName = cb.from and cb.from.first_name
+            },
+            data = cb.data
+        }
+
+        telegram:log("debug", "Callback received: " .. (cb.data or ""))
+        telegram:emit("telegram:callback", data)
+    end
+end
+
+--- Poll for updates
+local function pollUpdates()
+    if not polling.enabled then return end
+
+    local params = {
+        offset = polling.offset,
+        timeout = 0,  -- Non-blocking for now
+        allowed_updates = "message,callback_query"
+    }
+
+    apiRequest("getUpdates", params, function(updates, err)
+        if err then
+            -- Schedule next poll even on error
+            if polling.enabled then
+                polling.timer = telegram:setTimeout(polling.interval, pollUpdates)
+            end
+            return
+        end
+
+        if updates and #updates > 0 then
+            for _, update in ipairs(updates) do
+                -- Update offset to acknowledge this update
+                if update.update_id >= polling.offset then
+                    polling.offset = update.update_id + 1
+                end
+
+                -- Process the update
+                local ok, err = pcall(processUpdate, update)
+                if not ok then
+                    telegram:log("error", "Error processing update: " .. tostring(err))
+                end
+            end
+        end
+
+        -- Schedule next poll
+        if polling.enabled then
+            polling.timer = telegram:setTimeout(polling.interval, pollUpdates)
+        end
+    end)
+end
+
+--- Start polling
+local function startPolling()
+    if polling.enabled then return end
+
+    polling.enabled = true
+    telegram:log("info", "Starting message polling (interval: " .. polling.interval .. "ms)")
+    pollUpdates()
+end
+
+--- Stop polling
+local function stopPolling()
+    polling.enabled = false
+    if polling.timer then
+        telegram:clearTimer(polling.timer)
+        polling.timer = nil
+    end
+    telegram:log("info", "Message polling stopped")
+end
+
 -- ============================================
 -- INITIALIZATION
 -- ============================================
@@ -115,29 +241,52 @@ telegram:onInit(function(config)
         return
     end
 
-    if not config.chatId or config.chatId == "" then
-        telegram:log("error", "Chat ID is required")
-        return
+    config.defaultParseMode = config.defaultParseMode or "HTML"
+    config.enablePolling = config.enablePolling ~= false  -- Default: true
+    config.pollingInterval = tonumber(config.pollingInterval) or 5
+
+    polling.interval = config.pollingInterval * 1000  -- Convert to ms
+
+    -- Setup proxy if configured
+    if config.proxyUrl and config.proxyUrl ~= "" then
+        -- Ensure proxy URL ends with /bot (so token can be appended)
+        local proxyBase = config.proxyUrl
+        if not proxyBase:match("/$") then
+            proxyBase = proxyBase .. "/"
+        end
+        if not proxyBase:match("/bot$") then
+            proxyBase = proxyBase .. "bot"
+        end
+        apiBase = proxyBase
+        telegram:log("info", "Using proxy: " .. config.proxyUrl:gsub("://[^:]+:[^@]+@", "://***:***@"))
+    else
+        apiBase = DEFAULT_API_BASE
     end
 
-    config.defaultParseMode = config.defaultParseMode or "HTML"
-
-    telegram:log("info", "Initialized with chat_id: " .. config.chatId)
+    telegram:log("info", "Initialized" .. (config.chatId and (" with chat_id: " .. config.chatId) or ""))
 
     -- Test connection by getting bot info
     apiRequest("getMe", {}, function(result, err)
         if result then
             telegram:log("info", "Bot connected: @" .. (result.username or "unknown"))
+
+            -- Start polling if enabled
+            if config.enablePolling then
+                startPolling()
+            end
+        else
+            telegram:log("error", "Failed to connect to bot")
         end
     end)
 end)
 
 telegram:onCleanup(function()
+    stopPolling()
     telegram:log("info", "Telegram plugin stopped")
 end)
 
 -- ============================================
--- PUBLIC API
+-- PUBLIC API - SENDING
 -- ============================================
 
 --- Send a text message
@@ -147,8 +296,15 @@ end)
 function telegram:send(text, options, callback)
     options = options or {}
 
+    local chatId = options.chatId or self.config.chatId
+    if not chatId then
+        telegram:log("error", "No chat ID specified")
+        if callback then callback(nil, "No chat ID") end
+        return
+    end
+
     local params = {
-        chat_id = options.chatId or self.config.chatId,
+        chat_id = chatId,
         text = text,
         parse_mode = options.parseMode or self.config.defaultParseMode,
         disable_notification = options.silent and "true" or nil,
@@ -169,6 +325,17 @@ end
 --- Send a message (alias for send)
 function telegram:sendMessage(text, options, callback)
     self:send(text, options, callback)
+end
+
+--- Reply to a message
+-- @param originalMsg table The received message data (from telegram:message event)
+-- @param text string Reply text
+-- @param callback function Optional callback
+function telegram:reply(originalMsg, text, callback)
+    self:send(text, {
+        chatId = originalMsg.chatId,
+        replyTo = originalMsg.messageId
+    }, callback)
 end
 
 --- Send a silent message (no notification sound)
@@ -266,15 +433,61 @@ function telegram:sendDocument(documentUrl, options, callback)
 end
 
 --- Send typing indicator
+-- @param chatId number Optional chat ID
 -- @param callback function Optional callback
-function telegram:sendTyping(callback)
+function telegram:sendTyping(chatId, callback)
     local params = {
-        chat_id = self.config.chatId,
+        chat_id = chatId or self.config.chatId,
         action = "typing"
     }
 
     apiRequest("sendChatAction", params, callback)
 end
+
+--- Answer callback query (for inline buttons)
+-- @param callbackId string Callback query ID
+-- @param options table Optional: {text, showAlert}
+-- @param callback function Optional callback
+function telegram:answerCallback(callbackId, options, callback)
+    options = options or {}
+
+    local params = {
+        callback_query_id = callbackId,
+        text = options.text,
+        show_alert = options.showAlert and "true" or nil
+    }
+
+    apiRequest("answerCallbackQuery", params, callback)
+end
+
+-- ============================================
+-- PUBLIC API - POLLING CONTROL
+-- ============================================
+
+--- Start message polling
+function telegram:startPolling()
+    startPolling()
+end
+
+--- Stop message polling
+function telegram:stopPolling()
+    stopPolling()
+end
+
+--- Check if polling is active
+function telegram:isPolling()
+    return polling.enabled
+end
+
+--- Set polling interval
+-- @param seconds number Interval in seconds
+function telegram:setPollingInterval(seconds)
+    polling.interval = seconds * 1000
+end
+
+-- ============================================
+-- PUBLIC API - INFO
+-- ============================================
 
 --- Get bot info
 -- @param callback function Callback(result, error)
@@ -286,8 +499,10 @@ end
 function telegram:getStats()
     return {
         messagesSent = stats.messagesSent,
+        messagesReceived = stats.messagesReceived,
         lastMessageTime = stats.lastMessageTime,
-        lastError = stats.lastError
+        lastError = stats.lastError,
+        pollingEnabled = polling.enabled
     }
 end
 

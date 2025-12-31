@@ -1,8 +1,8 @@
 {
   "id": "telegram",
   "name": "Telegram Notifications",
-  "version": "1.0.0",
-  "description": "Powiadomienia przez Telegram Bot API",
+  "version": "1.2.0",
+  "description": "Wysyłanie i odbieranie wiadomości przez Telegram Bot API",
   "author": "vCLU",
   "license": "MIT",
 
@@ -19,24 +19,42 @@
     "botToken": {
       "type": "string",
       "required": true,
-      "description": "Token bota z @BotFather"
+      "description": "Token bota z @BotFather (format: 123456789:ABCdefGHI...)"
+    },
+    "proxyUrl": {
+      "type": "string",
+      "required": false,
+      "description": "URL proxy z basic auth (np. https://user:pass@proxy.example.com/telegram)"
     },
     "chatId": {
       "type": "string",
-      "required": true,
-      "description": "ID chatu/użytkownika do wysyłania wiadomości"
+      "required": false,
+      "description": "Domyślny ID chatu do wysyłania wiadomości"
     },
     "defaultParseMode": {
       "type": "string",
       "default": "HTML",
       "description": "Domyślny format wiadomości (HTML, Markdown, MarkdownV2)"
+    },
+    "enablePolling": {
+      "type": "boolean",
+      "default": true,
+      "description": "Włącz odbieranie wiadomości (polling)"
+    },
+    "pollingInterval": {
+      "type": "number",
+      "default": 5,
+      "description": "Interwał pollingu w sekundach"
     }
   },
 
   "exports": {
     "events": [
+      { "name": "telegram:message", "description": "Odebrano wiadomość" },
+      { "name": "telegram:command", "description": "Odebrano komendę (np. /start)" },
+      { "name": "telegram:callback", "description": "Kliknięto przycisk inline" },
       { "name": "telegram:sent", "description": "Wiadomość wysłana" },
-      { "name": "telegram:error", "description": "Błąd wysyłania" }
+      { "name": "telegram:error", "description": "Błąd API" }
     ]
   }
 }
