@@ -69,7 +69,7 @@ local function apiRequest(method, params, callback)
     end
     local queryString = table.concat(body, "&")
 
-    -- Use POST for sendMessage (body can be large)
+    -- Use httpRequest with proper Content-Type header
     telegram:httpRequest({
         method = "POST",
         url = url,
@@ -77,9 +77,11 @@ local function apiRequest(method, params, callback)
             ["Content-Type"] = "application/x-www-form-urlencoded"
         },
         body = queryString,
-        timeout = 10000,
-        verifySSL = not skipSSLVerify
+        timeout = 10000
     }, function(response, err)
+        if response then
+            telegram:log("debug", "API callback: status=" .. tostring(response.status) .. " body=" .. tostring(response.body):sub(1, 200))
+        end
         if err then
             stats.lastError = err
             telegram:log("error", "API request failed: " .. tostring(err))
@@ -90,9 +92,10 @@ local function apiRequest(method, params, callback)
 
         if not response or response.status ~= 200 then
             local errMsg = "HTTP " .. tostring(response and response.status or "error")
+            local respBody = response and response.body or ""
             stats.lastError = errMsg
-            telegram:log("error", "API error: " .. errMsg)
-            telegram:emit("telegram:error", { error = errMsg, method = method })
+            telegram:log("error", "API error: " .. errMsg .. " body: " .. respBody:sub(1, 500))
+            telegram:emit("telegram:error", { error = errMsg, method = method, body = respBody })
             if callback then callback(nil, errMsg) end
             return
         end

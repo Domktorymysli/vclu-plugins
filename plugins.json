@@ -78,6 +78,18 @@
       "requires": {
         "vclu": ">=1.0.0"
       }
+    },
+    {
+      "id": "supla-power-meter",
+      "name": "Supla Power Meter",
+      "version": "1.0.0",
+      "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
+      "author": "vCLU Team",
+      "path": "plugins/supla-power-meter",
+      "tags": ["energy", "power", "supla", "meter", "electricity", "photovoltaic"],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }

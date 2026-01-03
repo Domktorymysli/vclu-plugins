@@ -1,0 +1,46 @@
+{
+  "id": "supla-power-meter",
+  "name": "Supla Power Meter",
+  "version": "1.0.0",
+  "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
+  "author": "vCLU Team",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer", "json"]
+  },
+
+  "config": {
+    "directUrl": {
+      "type": "string",
+      "required": true,
+      "description": "Direct Link URL (np. https://svr59.supla.org/direct/717/XXXxxx_xxxXXX/read)"
+    },
+    "interval": {
+      "type": "number",
+      "default": 60,
+      "min": 10,
+      "max": 3600,
+      "description": "Interwał odczytu w sekundach"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "power": {
+        "type": "PowerMeterData",
+        "description": "Aktualne dane licznika energii"
+      }
+    },
+    "events": [
+      { "name": "supla:updated", "description": "Dane zostały zaktualizowane" },
+      { "name": "supla:error", "description": "Błąd komunikacji z API" },
+      { "name": "supla:disconnected", "description": "Licznik rozłączony" }
+    ]
+  }
+}
