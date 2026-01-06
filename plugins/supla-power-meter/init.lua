@@ -1,47 +1,47 @@
 --- Supla Power Meter Plugin for vCLU
 -- Integration with Supla 3-phase power meter via Direct Links API
 -- @module plugins.supla-power-meter
--- @see https://cloud.supla.org/integrations/tokens
--- @see https://svr59.supla.org/api-docs/docs.html
+
+--------------------------------------------------------------------------------
+-- PLUGIN REGISTRATION
+--------------------------------------------------------------------------------
 
 local supla = Plugin:new("supla-power-meter", {
     name = "Supla Power Meter",
-    version = "1.0.0",
+    version = "2.0.0",
     description = "Supla 3-phase power meter integration"
 })
 
--- ============================================
--- INTERNAL STATE
--- ============================================
+--------------------------------------------------------------------------------
+-- STATE
+--------------------------------------------------------------------------------
 
-local data = {
+local state = {
+    ready = false,
+    lastUpdate = 0,
+    lastError = nil,
     connected = false,
     -- Total values
-    totalPower = 0,           -- Total active power (all phases) [W]
-    totalCurrent = 0,         -- Total current (all phases) [A]
-    totalEnergy = 0,          -- Total forward active energy [kWh]
-    totalReverseEnergy = 0,   -- Total reverse active energy (solar) [kWh]
-    totalCost = 0,            -- Total cost
+    totalPower = 0,
+    totalCurrent = 0,
+    totalEnergy = 0,
+    totalReverseEnergy = 0,
+    totalCost = 0,
     -- Per-phase data
-    phases = {},              -- Array of phase data
+    phases = {},
     -- Metadata
     currency = "",
-    pricePerUnit = 0,
-    lastUpdate = 0,
-    error = nil
+    pricePerUnit = 0
 }
 
-local refreshTimerId = nil
+local poller = nil
 
--- ============================================
+--------------------------------------------------------------------------------
 -- HELPERS
--- ============================================
+--------------------------------------------------------------------------------
 
---- Normalize Direct Link URL
 local function normalizeUrl(url)
-    -- Remove trailing slash
     url = url:gsub("/$", "")
-    -- Ensure ?format=json suffix
     if not url:find("format=json") then
         if url:find("?") then
             url = url .. "&format=json"
@@ -52,42 +52,37 @@ local function normalizeUrl(url)
     return url
 end
 
---- Parse phase data from API response
 local function parsePhase(phaseData)
     return {
-        number = phaseData.number or 0,
-        frequency = phaseData.frequency or 0,
-        voltage = phaseData.voltage or 0,
-        current = phaseData.current or 0,
-        powerActive = phaseData.powerActive or 0,
-        powerReactive = phaseData.powerReactive or 0,
-        powerApparent = phaseData.powerApparent or 0,
-        powerFactor = phaseData.powerFactor or 0,
-        phaseAngle = phaseData.phaseAngle or 0,
-        forwardEnergy = phaseData.totalForwardActiveEnergy or 0,
-        reverseEnergy = phaseData.totalReverseActiveEnergy or 0,
-        forwardReactiveEnergy = phaseData.totalForwardReactiveEnergy or 0,
-        reverseReactiveEnergy = phaseData.totalReverseReactiveEnergy or 0
+        number = supla:coerceNumber(phaseData.number, 0),
+        frequency = supla:coerceNumber(phaseData.frequency, 0),
+        voltage = supla:coerceNumber(phaseData.voltage, 0),
+        current = supla:coerceNumber(phaseData.current, 0),
+        powerActive = supla:coerceNumber(phaseData.powerActive, 0),
+        powerReactive = supla:coerceNumber(phaseData.powerReactive, 0),
+        powerApparent = supla:coerceNumber(phaseData.powerApparent, 0),
+        powerFactor = supla:coerceNumber(phaseData.powerFactor, 0),
+        phaseAngle = supla:coerceNumber(phaseData.phaseAngle, 0),
+        forwardEnergy = supla:coerceNumber(phaseData.totalForwardActiveEnergy, 0),
+        reverseEnergy = supla:coerceNumber(phaseData.totalReverseActiveEnergy, 0),
+        forwardReactiveEnergy = supla:coerceNumber(phaseData.totalForwardReactiveEnergy, 0),
+        reverseReactiveEnergy = supla:coerceNumber(phaseData.totalReverseReactiveEnergy, 0)
     }
 end
 
---- Parse API response
-local function parseResponse(body)
-    local jsonData = JSON:decode(body)
-
-    if not jsonData then
-        return nil, "Invalid JSON response"
+local function parseResponse(json)
+    if not json then
+        return nil, "Invalid JSON"
     end
 
-    -- Calculate totals from phases
     local totalPower = 0
     local totalCurrent = 0
     local totalEnergy = 0
     local totalReverseEnergy = 0
     local phases = {}
 
-    if jsonData.phases then
-        for i, phase in ipairs(jsonData.phases) do
+    if json.phases then
+        for i, phase in ipairs(json.phases) do
             local parsed = parsePhase(phase)
             phases[i] = parsed
             totalPower = totalPower + parsed.powerActive
@@ -98,283 +93,263 @@ local function parseResponse(body)
     end
 
     return {
-        connected = jsonData.connected or false,
+        connected = supla:coerceBool(json.connected, false),
         totalPower = totalPower,
         totalCurrent = totalCurrent,
         totalEnergy = totalEnergy,
         totalReverseEnergy = totalReverseEnergy,
-        totalCost = jsonData.totalCost or 0,
-        currency = jsonData.currency or "",
-        pricePerUnit = jsonData.pricePerUnit or 0,
+        totalCost = supla:coerceNumber(json.totalCost, 0),
+        currency = supla:coerceString(json.currency, ""),
+        pricePerUnit = supla:coerceNumber(json.pricePerUnit, 0),
         phases = phases,
         phaseCount = #phases
     }
 end
 
--- ============================================
--- DATA FETCHING
--- ============================================
-
---- Fetch data from Supla API
-local function fetchData(callback)
-    local config = supla.config
-    local url = normalizeUrl(config.directUrl)
-
-    supla:log("debug", "Fetching from: " .. url)
-
-    supla:httpGet(url, function(response, err)
-        if err then
-            callback(nil, err)
-            return
-        end
-
-        if not response or response.status ~= 200 then
-            callback(nil, "HTTP " .. tostring(response and response.status or "error"))
-            return
-        end
-
-        local parsed, parseErr = parseResponse(response.body)
-        if not parsed then
-            callback(nil, parseErr or "Parse error")
-            return
-        end
-
-        callback(parsed, nil)
-    end)
-end
-
---- Update internal state and emit events
-local function updateData(newData)
-    local wasConnected = data.connected
-    local changed = data.totalPower ~= newData.totalPower or
-                    data.connected ~= newData.connected
-
-    -- Update state
-    data.connected = newData.connected
-    data.totalPower = newData.totalPower
-    data.totalCurrent = newData.totalCurrent
-    data.totalEnergy = newData.totalEnergy
-    data.totalReverseEnergy = newData.totalReverseEnergy
-    data.totalCost = newData.totalCost
-    data.currency = newData.currency
-    data.pricePerUnit = newData.pricePerUnit
-    data.phases = newData.phases
-    data.lastUpdate = os.time()
-    data.error = nil
-
-    -- Log update
-    supla:log("info", string.format(
-        "Power: %.0fW, Current: %.1fA, Energy: %.2fkWh, Connected: %s",
-        data.totalPower,
-        data.totalCurrent,
-        data.totalEnergy,
-        tostring(data.connected)
-    ))
-
-    -- Update registry object
-    supla:createObject("power", {
-        connected = data.connected,
-        totalPower = data.totalPower,
-        totalCurrent = data.totalCurrent,
-        totalEnergy = data.totalEnergy,
-        totalReverseEnergy = data.totalReverseEnergy,
-        totalCost = data.totalCost,
-        currency = data.currency,
-        pricePerUnit = data.pricePerUnit,
-        phaseCount = #data.phases,
-        phase1 = data.phases[1] or {},
-        phase2 = data.phases[2] or {},
-        phase3 = data.phases[3] or {},
-        lastUpdate = data.lastUpdate
-    })
-
-    -- Emit events
-    if changed then
-        supla:emit("supla:updated", {
-            connected = data.connected,
-            totalPower = data.totalPower,
-            totalCurrent = data.totalCurrent,
-            totalEnergy = data.totalEnergy
-        })
-    end
-
-    -- Connection state change
-    if wasConnected and not data.connected then
-        supla:log("warn", "Power meter disconnected")
-        supla:emit("supla:disconnected", {})
-    end
-end
-
---- Refresh data from API
-local function refresh()
-    fetchData(function(newData, err)
-        if err then
-            data.error = err
-            supla:log("error", "Fetch failed: " .. tostring(err))
-            supla:emit("supla:error", { error = err })
-            return
-        end
-        updateData(newData)
-    end)
-end
-
--- ============================================
+--------------------------------------------------------------------------------
 -- INITIALIZATION
--- ============================================
+--------------------------------------------------------------------------------
 
 supla:onInit(function(config)
     if not config.directUrl or config.directUrl == "" then
-        supla:log("error", "Direct Link URL is required")
+        supla:log("error", "directUrl is required")
         return
     end
 
-    config.interval = tonumber(config.interval) or 60
+    local interval = supla:coerceNumber(config.interval, 60)
+    local url = normalizeUrl(config.directUrl)
 
-    supla:log("info", string.format(
-        "Initializing: url=%s, interval=%ds",
-        config.directUrl:sub(1, 50) .. "...",
-        config.interval
-    ))
+    supla:logSafe("info", "Initializing", { interval = interval })
 
-    -- Setup refresh timer
-    if config.interval > 0 then
-        local intervalMs = config.interval * 1000
-        refreshTimerId = supla:setInterval(intervalMs, refresh)
-    end
+    -- Create initial registry object
+    supla:upsertObject("power", {
+        ready = false,
+        connected = false,
+        totalPower = 0,
+        totalCurrent = 0,
+        totalEnergy = 0,
+        totalReverseEnergy = 0,
+        totalCost = 0,
+        currency = "",
+        pricePerUnit = 0,
+        phaseCount = 0,
+        phase1 = {},
+        phase2 = {},
+        phase3 = {},
+        lastUpdate = 0
+    })
 
-    -- Initial fetch after short delay
-    supla:setTimeout(2000, refresh)
+    -- Create poller
+    poller = supla:poller("fetch", {
+        interval = interval * 1000,
+        immediate = true,
+        timeout = 15000,
+        retry = { maxAttempts = 2, backoff = 2000 },
+
+        onTick = function(done)
+            supla:httpRequest({
+                url = url,
+                timeout = 10000,
+                parseJson = "success",
+                log = { redact = true }
+            }, function(resp)
+                if resp.err then
+                    done(resp.err)
+                    return
+                end
+
+                local data, parseErr = parseResponse(resp.json)
+                if not data then
+                    done(parseErr or "Parse error")
+                    return
+                end
+
+                local wasConnected = state.connected
+                local changed = state.totalPower ~= data.totalPower or
+                                state.connected ~= data.connected
+
+                -- Update state
+                state.ready = true
+                state.lastUpdate = os.time()
+                state.lastError = nil
+                state.connected = data.connected
+                state.totalPower = data.totalPower
+                state.totalCurrent = data.totalCurrent
+                state.totalEnergy = data.totalEnergy
+                state.totalReverseEnergy = data.totalReverseEnergy
+                state.totalCost = data.totalCost
+                state.currency = data.currency
+                state.pricePerUnit = data.pricePerUnit
+                state.phases = data.phases
+
+                -- Update registry
+                supla:updateObject("power", {
+                    ready = true,
+                    connected = data.connected,
+                    totalPower = data.totalPower,
+                    totalCurrent = data.totalCurrent,
+                    totalEnergy = data.totalEnergy,
+                    totalReverseEnergy = data.totalReverseEnergy,
+                    totalCost = data.totalCost,
+                    currency = data.currency,
+                    pricePerUnit = data.pricePerUnit,
+                    phaseCount = #data.phases,
+                    phase1 = data.phases[1] or {},
+                    phase2 = data.phases[2] or {},
+                    phase3 = data.phases[3] or {},
+                    lastUpdate = state.lastUpdate
+                })
+
+                supla:log("info", string.format(
+                    "Power: %.0fW, Current: %.1fA, Energy: %.2fkWh, Connected: %s",
+                    data.totalPower, data.totalCurrent, data.totalEnergy, tostring(data.connected)
+                ))
+
+                -- Emit events
+                if changed then
+                    supla:emit("supla:updated", {
+                        connected = data.connected,
+                        totalPower = data.totalPower,
+                        totalCurrent = data.totalCurrent,
+                        totalEnergy = data.totalEnergy
+                    }, { throttle = 30000 })
+                end
+
+                if wasConnected and not data.connected then
+                    supla:log("warn", "Power meter disconnected")
+                    supla:emit("supla:disconnected", {})
+                end
+
+                done()
+            end)
+        end,
+
+        onError = function(err, stats)
+            state.lastError = err
+            supla:log("error", "Fetch failed: " .. tostring(err))
+            supla:emit("supla:error", { error = err })
+        end
+    })
+
+    poller:start()
 end)
 
 supla:onCleanup(function()
-    if refreshTimerId then
-        supla:clearTimer(refreshTimerId)
+    if poller then
+        poller:stop()
     end
     supla:log("info", "Supla plugin stopped")
 end)
 
--- ============================================
+--------------------------------------------------------------------------------
 -- PUBLIC API
--- ============================================
+--------------------------------------------------------------------------------
 
---- Check if power meter is connected
 function supla:isConnected()
-    return data.connected
+    return state.connected
 end
 
---- Get total active power (all phases) in Watts
+function supla:isReady()
+    return state.ready
+end
+
+function supla:getLastError()
+    return state.lastError
+end
+
 function supla:getTotalPower()
-    return data.totalPower
+    return state.totalPower
 end
 
---- Get total current (all phases) in Amps
 function supla:getTotalCurrent()
-    return data.totalCurrent
+    return state.totalCurrent
 end
 
---- Get total forward active energy in kWh
 function supla:getTotalEnergy()
-    return data.totalEnergy
+    return state.totalEnergy
 end
 
---- Get total reverse active energy (solar export) in kWh
 function supla:getReverseEnergy()
-    return data.totalReverseEnergy
+    return state.totalReverseEnergy
 end
 
---- Get total cost
 function supla:getTotalCost()
-    return data.totalCost
+    return state.totalCost
 end
 
---- Get currency code
 function supla:getCurrency()
-    return data.currency
+    return state.currency
 end
 
---- Get price per unit (kWh)
 function supla:getPricePerUnit()
-    return data.pricePerUnit
+    return state.pricePerUnit
 end
 
---- Get number of phases
 function supla:getPhaseCount()
-    return #data.phases
+    return #state.phases
 end
 
---- Get phase data by number (1-3)
--- @param phaseNum number Phase number (1, 2, or 3)
--- @return table Phase data or nil
 function supla:getPhase(phaseNum)
-    return data.phases[phaseNum]
+    return state.phases[phaseNum]
 end
 
---- Get voltage for specific phase
--- @param phaseNum number Phase number (1, 2, or 3)
--- @return number Voltage in Volts
 function supla:getVoltage(phaseNum)
-    local phase = data.phases[phaseNum]
+    local phase = state.phases[phaseNum]
     return phase and phase.voltage or 0
 end
 
---- Get current for specific phase
--- @param phaseNum number Phase number (1, 2, or 3)
--- @return number Current in Amps
 function supla:getCurrent(phaseNum)
-    local phase = data.phases[phaseNum]
+    local phase = state.phases[phaseNum]
     return phase and phase.current or 0
 end
 
---- Get power for specific phase
--- @param phaseNum number Phase number (1, 2, or 3)
--- @return number Active power in Watts
 function supla:getPower(phaseNum)
-    local phase = data.phases[phaseNum]
+    local phase = state.phases[phaseNum]
     return phase and phase.powerActive or 0
 end
 
---- Get frequency (from phase 1)
 function supla:getFrequency()
-    local phase = data.phases[1]
+    local phase = state.phases[1]
     return phase and phase.frequency or 0
 end
 
---- Get all phases data
 function supla:getPhases()
-    return data.phases
+    return state.phases
 end
 
---- Get last update timestamp
 function supla:getLastUpdate()
-    return data.lastUpdate
+    return state.lastUpdate
 end
 
---- Get last error
-function supla:getError()
-    return data.error
-end
-
---- Get all data
 function supla:getData()
     return {
-        connected = data.connected,
-        totalPower = data.totalPower,
-        totalCurrent = data.totalCurrent,
-        totalEnergy = data.totalEnergy,
-        totalReverseEnergy = data.totalReverseEnergy,
-        totalCost = data.totalCost,
-        currency = data.currency,
-        pricePerUnit = data.pricePerUnit,
-        phases = data.phases,
-        phaseCount = #data.phases,
-        lastUpdate = data.lastUpdate,
-        error = data.error
+        ready = state.ready,
+        connected = state.connected,
+        totalPower = state.totalPower,
+        totalCurrent = state.totalCurrent,
+        totalEnergy = state.totalEnergy,
+        totalReverseEnergy = state.totalReverseEnergy,
+        totalCost = state.totalCost,
+        currency = state.currency,
+        pricePerUnit = state.pricePerUnit,
+        phases = state.phases,
+        phaseCount = #state.phases,
+        lastUpdate = state.lastUpdate,
+        lastError = state.lastError
     }
 end
 
---- Force refresh data
 function supla:refresh()
-    refresh()
+    if poller then
+        poller:poll()
+    end
+end
+
+function supla:getStats()
+    if poller then
+        return poller:stats()
+    end
+    return {}
 end
 
 return supla

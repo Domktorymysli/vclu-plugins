@@ -2,48 +2,56 @@
 -- Integration with Salda heat recovery ventilation system
 -- @module plugins.salda-recuperator
 
+--------------------------------------------------------------------------------
+-- PLUGIN REGISTRATION
+--------------------------------------------------------------------------------
+
 local salda = Plugin:new("salda-recuperator", {
     name = "Salda Recuperator",
-    version = "1.0.0",
+    version = "2.0.0",
     description = "Salda recuperator integration"
 })
 
--- Internal state
-local data = {
-    supplyAir = 0,        -- Temperatura nawiewu
-    exhaustAir = 0,       -- Temperatura wywiewu
-    extractAir = 0,       -- Temperatura wyciągu
-    outsideAir = 0,       -- Temperatura zewnętrzna
-    humidity = 0,         -- Wilgotność (%)
-    supplyFanSpeed = 0,   -- Prędkość wentylatora nawiewu (raw)
-    extractFanSpeed = 0,  -- Prędkość wentylatora wyciągu (raw)
-    fanSpeed = 0,         -- Prędkość wentylatora (1-4)
-    temperature = 0,      -- Temperatura zadana
+--------------------------------------------------------------------------------
+-- STATE
+--------------------------------------------------------------------------------
+
+local state = {
+    ready = false,
     lastUpdate = 0,
-    error = nil
+    lastError = nil,
+    -- Temperatures
+    supplyAir = 0,
+    exhaustAir = 0,
+    extractAir = 0,
+    outsideAir = 0,
+    -- Other
+    humidity = 0,
+    supplyFanSpeed = 0,
+    extractFanSpeed = 0,
+    fanSpeed = 0,
+    temperature = 0
 }
 
-local refreshTimerId = nil
+local poller = nil
+local authHeader = nil
 
--- ============================================
+--------------------------------------------------------------------------------
 -- HELPERS
--- ============================================
+--------------------------------------------------------------------------------
 
---- Parse temperature from raw value (divide by 10)
 local function parseTemp(raw)
     local num = tonumber(raw)
     if not num then return 0 end
-    return math.floor(num / 10 * 100) / 100  -- Round to 2 decimals
+    return math.floor(num / 10 * 100) / 100
 end
 
---- Parse humidity from raw value (divide by 100)
 local function parsePercent(raw)
     local num = tonumber(raw)
     if not num then return 0 end
-    return math.floor(num) / 100  -- 0.0 - 1.0
+    return math.floor(num) / 100
 end
 
---- Convert raw fan speed to level (0-4)
 local function parseFanSpeed(raw)
     local speed = tonumber(raw) or 0
     if speed == 0 then return 0 end
@@ -54,100 +62,21 @@ local function parseFanSpeed(raw)
     return 0
 end
 
---- Convert fan level (1-4) to raw value for setting
 local function fanLevelToRaw(level)
     if level == 0 then return 0 end
     if level == 1 then return 30 end
     if level == 2 then return 60 end
     if level == 3 then return 80 end
     if level == 4 then return 100 end
-    return 30  -- default
+    return 30
 end
 
---- Build Basic Auth header
-local function buildAuthHeader(login, password)
-    -- Base64 encode login:password
-    local credentials = login .. ":" .. password
-    -- Simple base64 encoding for ASCII
-    local b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    local result = {}
-    local pad = (3 - #credentials % 3) % 3
-    credentials = credentials .. string.rep("\0", pad)
-
-    for i = 1, #credentials, 3 do
-        local a, b, c = credentials:byte(i, i + 2)
-        local n = a * 65536 + b * 256 + c
-        table.insert(result, b64:sub(math.floor(n / 262144) % 64 + 1, math.floor(n / 262144) % 64 + 1))
-        table.insert(result, b64:sub(math.floor(n / 4096) % 64 + 1, math.floor(n / 4096) % 64 + 1))
-        table.insert(result, b64:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1))
-        table.insert(result, b64:sub(n % 64 + 1, n % 64 + 1))
-    end
-
-    local encoded = table.concat(result)
-    if pad > 0 then
-        encoded = encoded:sub(1, -pad - 1) .. string.rep("=", pad)
-    end
-
-    return "Basic " .. encoded
-end
-
---- Normalize IP address (remove protocol and trailing slash)
 local function normalizeIp(ip)
-    -- Remove http:// or https:// prefix
     ip = ip:gsub("^https?://", "")
-    -- Remove trailing slash
     ip = ip:gsub("/$", "")
     return ip
 end
 
---- Make HTTP request to recuperator (async)
-local function request(func, callback)
-    local config = salda.config
-    local ip = normalizeIp(config.ip)
-    local url = "http://" .. ip .. "/" .. func
-    local authHeader = buildAuthHeader(config.login, config.password)
-
-    -- Use plugin's httpRequest with custom headers
-    salda:httpRequest({
-        method = "GET",
-        url = url,
-        headers = {
-            ["Authorization"] = authHeader
-        },
-        timeout = 5000
-    }, function(response, err)
-        if err then
-            callback(nil, err)
-            return
-        end
-        if not response or response.status ~= 200 then
-            callback(nil, "HTTP " .. tostring(response and response.status or "error"))
-            return
-        end
-        callback(response.body, nil)
-    end)
-end
-
---- Make synchronous HTTP request to recuperator
-local function requestSync(func)
-    local config = salda.config
-    local ip = normalizeIp(config.ip)
-    local url = "http://" .. ip .. "/" .. func
-    local authHeader = buildAuthHeader(config.login, config.password)
-
-    -- Use HTTP module directly for sync request
-    local client = HTTP:new("salda-sync")
-    client:setTimeout(5000)
-    client:setHeader("Authorization", authHeader)
-
-    local response = client:GET(url)
-    if not response or response.status ~= 200 then
-        return nil, "HTTP " .. tostring(response and response.status or "error")
-    end
-    return response.body, nil
-end
-
---- Parse data response (semicolon-separated values)
 local function parseDataResponse(body)
     local parts = {}
     for part in string.gmatch(body, "[^;]+") do
@@ -156,228 +85,249 @@ local function parseDataResponse(body)
     return parts
 end
 
--- ============================================
--- API FUNCTIONS
--- ============================================
+local function request(func, callback)
+    local config = salda.config
+    local ip = normalizeIp(config.ip)
+    local url = "http://" .. ip .. "/" .. func
 
---- Fetch all data from recuperator
-local function fetchData(callback)
-    request("FUNC(4,1,4,0,24)", function(body, err)
-        if err then
-            if callback then callback(nil, err) end
+    salda:httpRequest({
+        method = "GET",
+        url = url,
+        headers = { ["Authorization"] = authHeader },
+        timeout = 5000,
+        log = { redact = true }
+    }, function(resp)
+        if resp.err then
+            callback(nil, resp.err)
             return
         end
-
-        local parts = parseDataResponse(body)
-        if #parts < 17 then
-            if callback then callback(nil, "Invalid data response") end
+        if resp.status ~= 200 then
+            callback(nil, "HTTP " .. tostring(resp.status))
             return
         end
-
-        -- Now fetch temperature setpoint
-        request("FUNC(4,1,3,0,111)", function(tempBody, tempErr)
-            local tempSetpoint = 0
-            if not tempErr and tempBody then
-                local tempParts = parseDataResponse(tempBody)
-                if #tempParts >= 2 then
-                    tempSetpoint = tonumber(tempParts[2]) or 0
-                end
-            end
-
-            local newData = {
-                supplyAir = parseTemp(parts[1]),
-                exhaustAir = parseTemp(parts[7]),
-                extractAir = parseTemp(parts[7]),
-                outsideAir = parseTemp(parts[10]),
-                humidity = parsePercent(parts[14]),
-                supplyFanSpeed = tonumber(parts[16]) or 0,
-                extractFanSpeed = tonumber(parts[17]) or 0,
-                fanSpeed = parseFanSpeed(parts[16]),
-                temperature = tempSetpoint,
-                lastUpdate = os.time()
-            }
-
-            if callback then callback(newData, nil) end
-        end)
+        callback(resp.body, nil)
     end)
 end
 
---- Update internal data and emit events
-local function updateData(newData)
-    local changed = data.supplyAir ~= newData.supplyAir or
-                    data.outsideAir ~= newData.outsideAir or
-                    data.fanSpeed ~= newData.fanSpeed or
-                    data.temperature ~= newData.temperature
-
-    -- Update state
-    data.supplyAir = newData.supplyAir
-    data.exhaustAir = newData.exhaustAir
-    data.extractAir = newData.extractAir
-    data.outsideAir = newData.outsideAir
-    data.humidity = newData.humidity
-    data.supplyFanSpeed = newData.supplyFanSpeed
-    data.extractFanSpeed = newData.extractFanSpeed
-    data.fanSpeed = newData.fanSpeed
-    data.temperature = newData.temperature
-    data.lastUpdate = newData.lastUpdate
-    data.error = nil
-
-    salda:log("info", string.format(
-        "Data updated: supply=%.1f°C, outside=%.1f°C, humidity=%.0f%%, fan=%d, setpoint=%d°C",
-        data.supplyAir, data.outsideAir, data.humidity * 100, data.fanSpeed, data.temperature
-    ))
-
-    -- Update registry
-    salda:createObject("data", {
-        supplyAir = data.supplyAir,
-        exhaustAir = data.exhaustAir,
-        extractAir = data.extractAir,
-        outsideAir = data.outsideAir,
-        humidity = data.humidity,
-        fanSpeed = data.fanSpeed,
-        temperature = data.temperature,
-        lastUpdate = data.lastUpdate
-    })
-
-    -- Emit event
-    if changed then
-        salda:emit("salda:updated", {
-            supplyAir = data.supplyAir,
-            outsideAir = data.outsideAir,
-            humidity = data.humidity,
-            fanSpeed = data.fanSpeed,
-            temperature = data.temperature
-        })
-    end
-end
-
---- Refresh data from recuperator
-local function refresh()
-    fetchData(function(newData, err)
-        if err then
-            data.error = err
-            salda:log("error", "Fetch failed: " .. tostring(err))
-            salda:emit("salda:error", { error = err })
-            return
-        end
-        updateData(newData)
-    end)
-end
-
--- ============================================
+--------------------------------------------------------------------------------
 -- INITIALIZATION
--- ============================================
+--------------------------------------------------------------------------------
 
 salda:onInit(function(config)
     if not config.ip or config.ip == "" then
-        salda:log("error", "IP address is required")
+        salda:log("error", "ip is required")
         return
     end
-
     if not config.login or config.login == "" then
-        salda:log("error", "Login is required")
+        salda:log("error", "login is required")
         return
     end
 
-    config.interval = tonumber(config.interval) or 60
+    local interval = salda:coerceNumber(config.interval, 60)
+    local password = salda:coerceString(config.password, "")
 
-    salda:log("info", string.format(
-        "Initializing: ip=%s, interval=%ds",
-        config.ip,
-        config.interval
-    ))
+    -- Build auth header
+    authHeader = salda:basicAuth(config.login, password)
 
-    -- Setup refresh timer
-    if config.interval > 0 then
-        local intervalMs = config.interval * 1000
-        refreshTimerId = salda:setInterval(intervalMs, refresh)
-    end
+    salda:log("info", string.format("Initializing: ip=%s, interval=%ds", config.ip, interval))
 
-    -- Initial fetch after short delay
-    salda:setTimeout(2000, refresh)
+    -- Create initial registry object
+    salda:upsertObject("data", {
+        ready = false,
+        supplyAir = 0,
+        exhaustAir = 0,
+        extractAir = 0,
+        outsideAir = 0,
+        humidity = 0,
+        fanSpeed = 0,
+        temperature = 0,
+        lastUpdate = 0
+    })
+
+    -- Create poller
+    poller = salda:poller("fetch", {
+        interval = interval * 1000,
+        immediate = true,
+        timeout = 15000,
+        retry = { maxAttempts = 2, backoff = 2000 },
+
+        onTick = function(done)
+            -- Fetch main data
+            request("FUNC(4,1,4,0,24)", function(body, err)
+                if err then
+                    done(err)
+                    return
+                end
+
+                local parts = parseDataResponse(body)
+                if #parts < 17 then
+                    done("Invalid data response")
+                    return
+                end
+
+                -- Fetch temperature setpoint
+                request("FUNC(4,1,3,0,111)", function(tempBody, tempErr)
+                    local tempSetpoint = 0
+                    if not tempErr and tempBody then
+                        local tempParts = parseDataResponse(tempBody)
+                        if #tempParts >= 2 then
+                            tempSetpoint = tonumber(tempParts[2]) or 0
+                        end
+                    end
+
+                    local data = {
+                        supplyAir = parseTemp(parts[1]),
+                        exhaustAir = parseTemp(parts[7]),
+                        extractAir = parseTemp(parts[7]),
+                        outsideAir = parseTemp(parts[10]),
+                        humidity = parsePercent(parts[14]),
+                        supplyFanSpeed = tonumber(parts[16]) or 0,
+                        extractFanSpeed = tonumber(parts[17]) or 0,
+                        fanSpeed = parseFanSpeed(parts[16]),
+                        temperature = tempSetpoint
+                    }
+
+                    -- Check for changes
+                    local changed = state.supplyAir ~= data.supplyAir or
+                                    state.outsideAir ~= data.outsideAir or
+                                    state.fanSpeed ~= data.fanSpeed or
+                                    state.temperature ~= data.temperature
+
+                    -- Update state
+                    state.ready = true
+                    state.lastUpdate = os.time()
+                    state.lastError = nil
+                    state.supplyAir = data.supplyAir
+                    state.exhaustAir = data.exhaustAir
+                    state.extractAir = data.extractAir
+                    state.outsideAir = data.outsideAir
+                    state.humidity = data.humidity
+                    state.supplyFanSpeed = data.supplyFanSpeed
+                    state.extractFanSpeed = data.extractFanSpeed
+                    state.fanSpeed = data.fanSpeed
+                    state.temperature = data.temperature
+
+                    -- Update registry
+                    salda:updateObject("data", {
+                        ready = true,
+                        supplyAir = data.supplyAir,
+                        exhaustAir = data.exhaustAir,
+                        extractAir = data.extractAir,
+                        outsideAir = data.outsideAir,
+                        humidity = data.humidity,
+                        fanSpeed = data.fanSpeed,
+                        temperature = data.temperature,
+                        lastUpdate = state.lastUpdate
+                    })
+
+                    salda:log("info", string.format(
+                        "Data: supply=%.1f°C, outside=%.1f°C, humidity=%.0f%%, fan=%d, setpoint=%d°C",
+                        data.supplyAir, data.outsideAir, data.humidity * 100, data.fanSpeed, data.temperature
+                    ))
+
+                    -- Emit event
+                    if changed then
+                        salda:emit("salda:updated", {
+                            supplyAir = data.supplyAir,
+                            outsideAir = data.outsideAir,
+                            humidity = data.humidity,
+                            fanSpeed = data.fanSpeed,
+                            temperature = data.temperature
+                        }, { throttle = 30000 })
+                    end
+
+                    done()
+                end)
+            end)
+        end,
+
+        onError = function(err, stats)
+            state.lastError = err
+            salda:log("error", "Fetch failed: " .. tostring(err))
+            salda:emit("salda:error", { error = err })
+        end
+    })
+
+    poller:start()
 end)
 
 salda:onCleanup(function()
-    if refreshTimerId then
-        salda:clearTimer(refreshTimerId)
+    if poller then
+        poller:stop()
     end
     salda:log("info", "Salda plugin stopped")
 end)
 
--- ============================================
--- PUBLIC API
--- ============================================
+--------------------------------------------------------------------------------
+-- PUBLIC API - GETTERS
+--------------------------------------------------------------------------------
 
---- Get supply air temperature (nawiew)
 function salda:getSupplyAir()
-    return data.supplyAir
+    return state.supplyAir
 end
 
---- Get exhaust air temperature (wywiew)
 function salda:getExhaustAir()
-    return data.exhaustAir
+    return state.exhaustAir
 end
 
---- Get extract air temperature (wyciąg)
 function salda:getExtractAir()
-    return data.extractAir
+    return state.extractAir
 end
 
---- Get outside air temperature
 function salda:getOutsideAir()
-    return data.outsideAir
+    return state.outsideAir
 end
 
---- Get humidity (0.0 - 1.0)
 function salda:getHumidity()
-    return data.humidity
+    return state.humidity
 end
 
---- Get humidity as percentage (0-100)
 function salda:getHumidityPercent()
-    return math.floor(data.humidity * 100)
+    return math.floor(state.humidity * 100)
 end
 
---- Get current fan speed level (0-4)
 function salda:getFanSpeed()
-    return data.fanSpeed
+    return state.fanSpeed
 end
 
---- Get temperature setpoint
 function salda:getTemperature()
-    return data.temperature
+    return state.temperature
 end
 
---- Get last update timestamp
 function salda:getLastUpdate()
-    return data.lastUpdate
+    return state.lastUpdate
 end
 
---- Get last error
-function salda:getError()
-    return data.error
+function salda:isReady()
+    return state.ready
 end
 
---- Get all data
+function salda:getLastError()
+    return state.lastError
+end
+
 function salda:getData()
     return {
-        supplyAir = data.supplyAir,
-        exhaustAir = data.exhaustAir,
-        extractAir = data.extractAir,
-        outsideAir = data.outsideAir,
-        humidity = data.humidity,
-        humidityPercent = math.floor(data.humidity * 100),
-        fanSpeed = data.fanSpeed,
-        temperature = data.temperature,
-        lastUpdate = data.lastUpdate,
-        error = data.error
+        ready = state.ready,
+        supplyAir = state.supplyAir,
+        exhaustAir = state.exhaustAir,
+        extractAir = state.extractAir,
+        outsideAir = state.outsideAir,
+        humidity = state.humidity,
+        humidityPercent = math.floor(state.humidity * 100),
+        fanSpeed = state.fanSpeed,
+        temperature = state.temperature,
+        lastUpdate = state.lastUpdate,
+        lastError = state.lastError
     }
 end
 
---- Set temperature setpoint
--- @param temp number Temperature in Celsius (15-30)
+--------------------------------------------------------------------------------
+-- PUBLIC API - SETTERS
+--------------------------------------------------------------------------------
+
 function salda:setTemperature(temp)
-    temp = math.max(15, math.min(30, tonumber(temp) or 22))
+    temp = math.max(15, math.min(30, salda:coerceNumber(temp, 22)))
 
     salda:log("info", "Setting temperature to: " .. temp)
 
@@ -387,18 +337,20 @@ function salda:setTemperature(temp)
             return
         end
 
-        data.temperature = temp
+        state.temperature = temp
         salda:log("info", "Temperature set to: " .. temp)
 
-        -- Refresh data after change
-        salda:setTimeout(1000, refresh)
+        -- Refresh after change
+        if poller then
+            salda:setTimeout(1000, function()
+                poller:poll()
+            end)
+        end
     end)
 end
 
---- Set fan speed level
--- @param level number Fan level (0=off, 1=low, 2=medium, 3=high, 4=max)
 function salda:setFanSpeed(level)
-    level = math.max(0, math.min(4, tonumber(level) or 1))
+    level = math.max(0, math.min(4, salda:coerceNumber(level, 1)))
     local rawSpeed = fanLevelToRaw(level)
 
     salda:log("info", "Setting fan speed to level " .. level .. " (raw: " .. rawSpeed .. ")")
@@ -409,67 +361,29 @@ function salda:setFanSpeed(level)
             return
         end
 
-        data.fanSpeed = level
+        state.fanSpeed = level
         salda:log("info", "Fan speed set to level: " .. level)
 
-        -- Refresh data after change
-        salda:setTimeout(1000, refresh)
+        -- Refresh after change
+        if poller then
+            salda:setTimeout(1000, function()
+                poller:poll()
+            end)
+        end
     end)
 end
 
---- Force refresh data (async)
 function salda:refresh()
-    refresh()
+    if poller then
+        poller:poll()
+    end
 end
 
---- Force refresh data (synchronous) - blocks until data is fetched
--- @return table Data table with all values, or nil on error
--- @return string Error message if failed
-function salda:refreshSync()
-    -- Fetch main data
-    local body, err = requestSync("FUNC(4,1,4,0,24)")
-    if err then
-        data.error = err
-        salda:log("error", "Sync fetch failed: " .. tostring(err))
-        return nil, err
+function salda:getStats()
+    if poller then
+        return poller:stats()
     end
-
-    local parts = parseDataResponse(body)
-    if #parts < 17 then
-        local parseErr = "Invalid data response"
-        data.error = parseErr
-        return nil, parseErr
-    end
-
-    -- Fetch temperature setpoint
-    local tempBody, tempErr = requestSync("FUNC(4,1,3,0,111)")
-    local tempSetpoint = 0
-    if not tempErr and tempBody then
-        local tempParts = parseDataResponse(tempBody)
-        if #tempParts >= 2 then
-            tempSetpoint = tonumber(tempParts[2]) or 0
-        end
-    end
-
-    -- Update internal state
-    data.supplyAir = parseTemp(parts[1])
-    data.exhaustAir = parseTemp(parts[7])
-    data.extractAir = parseTemp(parts[7])
-    data.outsideAir = parseTemp(parts[10])
-    data.humidity = parsePercent(parts[14])
-    data.supplyFanSpeed = tonumber(parts[16]) or 0
-    data.extractFanSpeed = tonumber(parts[17]) or 0
-    data.fanSpeed = parseFanSpeed(parts[16])
-    data.temperature = tempSetpoint
-    data.lastUpdate = os.time()
-    data.error = nil
-
-    salda:log("info", string.format(
-        "Sync refresh: supply=%.1f°C, outside=%.1f°C, humidity=%.0f%%, fan=%d",
-        data.supplyAir, data.outsideAir, data.humidity * 100, data.fanSpeed
-    ))
-
-    return self:getData(), nil
+    return {}
 end
 
 return salda
