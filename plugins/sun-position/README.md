@@ -199,6 +199,103 @@ Panel.dayLength:setValue(sun:getDayLengthFormatted())
 Panel.moonPhase:setValue(sun:getMoonPhaseName())
 ```
 
+## Expose do Home Assistant / HomeKit
+
+Plugin udostępnia tylko gettery, więc trzeba je opakować w obiekt exposable i podłączyć eventy:
+
+```lua
+local sun = Plugin.get("@vclu/sun-position")
+
+-- Helper do opakowania gettera z eventami
+-- epsilon: opcjonalna tolerancja dla floatów (debounce)
+local function wrapGetter(getter, id, epsilon)
+    local obj = {
+        _id = id,
+        _callbacks = {},
+        _last = nil,
+        _epsilon = epsilon,
+        get = function(self, f) return getter() end,
+        onChange = function(self, callback)
+            table.insert(self._callbacks, callback)
+            return function()
+                for i, cb in ipairs(self._callbacks) do
+                    if cb == callback then table.remove(self._callbacks, i); break end
+                end
+            end
+        end,
+        _notify = function(self)
+            local value = getter()
+            local changed = (self._last == nil)
+                or (self._epsilon and type(value) == "number" and math.abs(value - self._last) >= self._epsilon)
+                or (not self._epsilon and value ~= self._last)
+            if changed then
+                self._last = value
+                for _, cb in ipairs(self._callbacks) do cb(value) end
+            end
+        end
+    }
+    return obj
+end
+
+-- Tworzenie obiektów (z epsilon dla debounce)
+local azimuth = wrapGetter(function() return sun:getAzimuth() end, "sun:azimuth", 1.0)      -- notify gdy zmiana >= 1°
+local elevation = wrapGetter(function() return sun:getElevation() end, "sun:elevation", 0.5) -- notify gdy zmiana >= 0.5°
+local moonPhase = wrapGetter(function() return sun:getMoonIllumination() end, "sun:moon", 1) -- notify gdy zmiana >= 1%
+local daytime = wrapGetter(function() return sun:isDaytime() and 1 or 0 end, "sun:daytime")  -- binary, bez epsilon
+
+-- Expose
+expose(azimuth, "number", { name = "Słońce Azymut", min = 0, max = 360, unit = "°" })
+expose(elevation, "number", { name = "Słońce Wysokość", min = -90, max = 90, unit = "°" })
+expose(moonPhase, "number", { name = "Faza Księżyca", min = 0, max = 100, unit = "%" })
+expose(daytime, "sensor", { name = "Dzień" })
+
+-- Podłączenie eventów pluginu - TO JEST KLUCZOWE!
+-- Plugin emituje "sun:position" co 10 minut
+sun:on("sun:position", function(data)
+    azimuth:_notify()
+    elevation:_notify()
+    daytime:_notify()
+end)
+
+-- Księżyc zmienia się raz dziennie, można odświeżać o północy
+-- lub przy każdym sun:position (wartość i tak się nie zmieni często)
+```
+
+### Krótsza wersja (jeden obiekt, wiele wartości)
+
+```lua
+local sun = Plugin.get("@vclu/sun-position")
+
+-- Osobne obiekty dla każdej wartości
+local sensors = {
+    azimuth = { get = function() return sun:getAzimuth() end },
+    elevation = { get = function() return sun:getElevation() end },
+}
+
+-- Expose z id w options
+expose(sensors.azimuth, "number", { id = "sun_azimuth", name = "Azymut", min = 0, max = 360 })
+expose(sensors.elevation, "number", { id = "sun_elevation", name = "Wysokość", min = -90, max = 90 })
+
+-- Odświeżanie przez StateBus (gdy znasz path)
+sun:on("sun:position", function()
+    StateBus:getShared():emit("state_changed", { path = "sun_azimuth", value = sun:getAzimuth(), type = "number" })
+    StateBus:getShared():emit("state_changed", { path = "sun_elevation", value = sun:getElevation(), type = "number" })
+end)
+```
+
+### Dostępne wartości do expose
+
+| Getter                    | Typ          | Zakres      | Jednostka |
+|---------------------------|--------------|-------------|-----------|
+| `sun:getAzimuth()`        | number       | 0-360       | °         |
+| `sun:getElevation()`      | number       | -90 - 90    | °         |
+| `sun:getMoonIllumination()`| number      | 0-100       | %         |
+| `sun:getMoonPhase()`      | number       | 0-1         | -         |
+| `sun:getMoonAge()`        | number       | 0-29.5      | dni       |
+| `sun:getDayLength()`      | number       | 0-1440      | min       |
+| `sun:isDaytime()`         | sensor       | true/false  | -         |
+| `sun:isTwilight()`        | sensor       | true/false  | -         |
+
 ## Fazy księżyca
 
 | Faza             | Phase  | Iluminacja |

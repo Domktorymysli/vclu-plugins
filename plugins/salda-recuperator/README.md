@@ -1,6 +1,6 @@
 # Salda Recuperator Plugin
 
-Integracja z rekuperatorem Salda - odczyt danych i sterowanie.
+Integracja z rekuperatorem Salda - odczyt danych i sterowanie z pełnym wsparciem expose API.
 
 ## Konfiguracja
 
@@ -78,6 +78,83 @@ Plugin tworzy obiekt `plugins.vclu.salda-recuperator.data`:
 }
 ```
 
+## Expose do Home Assistant / HomeKit
+
+Plugin udostępnia sensory i kontrolki przez `plugin:get()`:
+
+| ID           | Typ      | Zakres  | Expose type   | Opis                     |
+|--------------|----------|---------|---------------|--------------------------|
+| `fanSpeed`   | control  | 0-4     | `fan`         | Prędkość wentylatora     |
+| `temperature`| control  | 15-30   | `number`      | Temperatura zadana °C    |
+| `supplyAir`  | sensor   | °C      | `temperature` | Temperatura nawiewu      |
+| `exhaustAir` | sensor   | °C      | `temperature` | Temperatura wywiewu      |
+| `extractAir` | sensor   | °C      | `temperature` | Temperatura wyciągu      |
+| `outsideAir` | sensor   | °C      | `temperature` | Temperatura zewnętrzna   |
+| `humidity`   | sensor   | 0-100%  | `humidity`    | Wilgotność powietrza     |
+
+### Przykład - pełne expose
+
+```lua
+local salda = Plugin.get("@vclu/salda-recuperator")
+
+-- Wentylator jako fan (typ fan w HA)
+expose(salda:get("fanSpeed"), "fan", {
+    name = "Rekuperator",
+    area = "Techniczny",
+    min = 0,
+    max = 4,
+    step = 1
+})
+
+-- Temperatura zadana
+expose(salda:get("temperature"), "number", {
+    name = "Temp Zadana Rekuperator",
+    area = "Techniczny",
+    min = 15,
+    max = 30,
+    step = 1,
+    unit = "°C"
+})
+
+-- Sensory temperatur
+expose(salda:get("supplyAir"), "temperature", { name = "Nawiew", area = "Techniczny" })
+expose(salda:get("exhaustAir"), "temperature", { name = "Wywiew", area = "Techniczny" })
+expose(salda:get("outsideAir"), "temperature", { name = "Zewnętrzna", area = "Techniczny" })
+
+-- Wilgotność
+expose(salda:get("humidity"), "humidity", { name = "Wilgotność", area = "Techniczny" })
+```
+
+### Expose - tylko najważniejsze
+
+```lua
+local salda = Plugin.get("@vclu/salda-recuperator")
+
+-- Tylko wentylator i temperatura zewnętrzna
+expose(salda:get("fanSpeed"), "fan", {
+    name = "Rekuperator",
+    area = "Techniczny",
+    min = 0, max = 4, step = 1
+})
+expose(salda:get("outsideAir"), "temperature", {
+    name = "Temp Zewnętrzna",
+    area = "Techniczny"
+})
+
+-- Reszta dostępna tylko w Lua przez API
+```
+
+### Rezultat w Home Assistant
+
+Po expose w HA pojawią się:
+- **fan.rekuperator** - wentylator z 4 biegami (OFF, 1, 2, 3, 4)
+- **sensor.nawiew** - temperatura nawiewu
+- **sensor.zewnetrzna** - temperatura zewnętrzna
+- **sensor.wilgotnosc** - wilgotność %
+- **number.temp_zadana_rekuperator** - slider 15-30°C
+
+Wszystkie encje automatycznie w pokoju "Techniczny" (dzięki `area`).
+
 ## Przykłady użycia
 
 ### Automatyczne dostosowanie wentylatora
@@ -130,10 +207,18 @@ Panel.fanLevel:setValue(salda:getFanSpeed())
 
 ## Mapowanie prędkości wentylatora
 
-| Poziom   | Wartość raw   | Opis       |
-|----------|---------------|------------|
-| 0        | 0             | Wyłączony  |
-| 1        | 30            | Niski      |
-| 2        | 60            | Średni     |
-| 3        | 80            | Wysoki     |
-| 4        | 100           | Maksymalny |
+| Poziom   | Wartość raw   | Opis       | W HA         |
+|----------|---------------|------------|--------------|
+| 0        | 0             | Wyłączony  | OFF          |
+| 1        | 30            | Niski      | 25%          |
+| 2        | 60            | Średni     | 50%          |
+| 3        | 80            | Wysoki     | 75%          |
+| 4        | 100           | Maksymalny | 100%         |
+
+W Home Assistant typ `fan` wyświetla się jako procentowy slider. Wartości 0-4 są mapowane na 0-100%:
+- Poziom 1 (30 raw) → 25% w HA
+- Poziom 2 (60 raw) → 50% w HA
+- Poziom 3 (80 raw) → 75% w HA
+- Poziom 4 (100 raw) → 100% w HA
+
+Dzięki `step = 1` i `max = 4` HA wie że to 4 dyskretne poziomy, nie ciągły zakres.

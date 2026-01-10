@@ -1,6 +1,50 @@
 --- Supla Power Meter Plugin for vCLU
--- Integration with Supla 3-phase power meter via Direct Links API
+-- Integration with Supla 3-phase power meter via Direct Links API.
+--
 -- @module plugins.supla-power-meter
+--
+-- ## Expose API Usage
+--
+-- ```lua
+-- local supla = Plugin.get("@vclu/supla-power-meter")
+--
+-- -- Moc całkowita (W)
+-- expose(supla:get("power"), "number", {
+--     name = "Moc",
+--     area = "Techniczny",
+--     unit = "W",
+--     min = 0,
+--     max = 20000
+-- })
+--
+-- -- Energia (kWh)
+-- expose(supla:get("energy"), "number", {
+--     name = "Energia",
+--     area = "Techniczny",
+--     unit = "kWh"
+-- })
+--
+-- -- Napięcie fazy 1
+-- expose(supla:get("voltage1"), "number", {
+--     name = "Napięcie L1",
+--     area = "Techniczny",
+--     unit = "V"
+-- })
+-- ```
+--
+-- ## Available Sensors
+--
+-- | ID            | Unit | Description              |
+-- |---------------|------|--------------------------|
+-- | power         | W    | Moc całkowita            |
+-- | current       | A    | Prąd całkowity           |
+-- | energy        | kWh  | Energia pobrana          |
+-- | reverseEnergy | kWh  | Energia oddana           |
+-- | frequency     | Hz   | Częstotliwość sieci      |
+-- | connected     | 0/1  | Status połączenia        |
+-- | voltage1/2/3  | V    | Napięcie fazy 1/2/3      |
+-- | power1/2/3    | W    | Moc fazy 1/2/3           |
+-- | current1/2/3  | A    | Prąd fazy 1/2/3          |
 
 --------------------------------------------------------------------------------
 -- PLUGIN REGISTRATION
@@ -8,8 +52,8 @@
 
 local supla = Plugin:new("supla-power-meter", {
     name = "Supla Power Meter",
-    version = "2.0.0",
-    description = "Supla 3-phase power meter integration"
+    version = "2.1.0",
+    description = "Supla 3-phase power meter integration with expose API support"
 })
 
 --------------------------------------------------------------------------------
@@ -139,6 +183,63 @@ supla:onInit(function(config)
         lastUpdate = 0
     })
 
+    ---------------------------------------------------------------------------
+    -- SENSORS (for expose API)
+    ---------------------------------------------------------------------------
+
+    -- Total values
+    supla:sensor("power", function() return state.totalPower end)
+    supla:sensor("current", function() return state.totalCurrent end)
+    supla:sensor("energy", function() return state.totalEnergy end)
+    supla:sensor("reverseEnergy", function() return state.totalReverseEnergy end)
+    supla:sensor("frequency", function()
+        local phase = state.phases[1]
+        return phase and phase.frequency or 0
+    end)
+    supla:sensor("connected", function() return state.connected and 1 or 0 end)
+
+    -- Per-phase voltage
+    supla:sensor("voltage1", function()
+        local phase = state.phases[1]
+        return phase and phase.voltage or 0
+    end)
+    supla:sensor("voltage2", function()
+        local phase = state.phases[2]
+        return phase and phase.voltage or 0
+    end)
+    supla:sensor("voltage3", function()
+        local phase = state.phases[3]
+        return phase and phase.voltage or 0
+    end)
+
+    -- Per-phase power
+    supla:sensor("power1", function()
+        local phase = state.phases[1]
+        return phase and phase.powerActive or 0
+    end)
+    supla:sensor("power2", function()
+        local phase = state.phases[2]
+        return phase and phase.powerActive or 0
+    end)
+    supla:sensor("power3", function()
+        local phase = state.phases[3]
+        return phase and phase.powerActive or 0
+    end)
+
+    -- Per-phase current
+    supla:sensor("current1", function()
+        local phase = state.phases[1]
+        return phase and phase.current or 0
+    end)
+    supla:sensor("current2", function()
+        local phase = state.phases[2]
+        return phase and phase.current or 0
+    end)
+    supla:sensor("current3", function()
+        local phase = state.phases[3]
+        return phase and phase.current or 0
+    end)
+
     -- Create poller
     poller = supla:poller("fetch", {
         interval = interval * 1000,
@@ -204,6 +305,28 @@ supla:onInit(function(config)
                     "Power: %.0fW, Current: %.1fA, Energy: %.2fkWh, Connected: %s",
                     data.totalPower, data.totalCurrent, data.totalEnergy, tostring(data.connected)
                 ))
+
+                -- Notify sensors for expose API
+                local function notifySensor(id)
+                    local sensor = supla:get(id)
+                    if sensor and sensor._notify then sensor:_notify() end
+                end
+
+                notifySensor("power")
+                notifySensor("current")
+                notifySensor("energy")
+                notifySensor("reverseEnergy")
+                notifySensor("frequency")
+                notifySensor("connected")
+                notifySensor("voltage1")
+                notifySensor("voltage2")
+                notifySensor("voltage3")
+                notifySensor("power1")
+                notifySensor("power2")
+                notifySensor("power3")
+                notifySensor("current1")
+                notifySensor("current2")
+                notifySensor("current3")
 
                 -- Emit events
                 if changed then

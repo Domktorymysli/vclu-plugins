@@ -16,8 +16,8 @@
 
 local plugin = Plugin:new("example", {
     name = "Example Plugin",
-    version = "2.0.0",
-    description = "Example plugin showcasing vCLU API v2"
+    version = "2.1.0",
+    description = "Example plugin showcasing vCLU API v2 with expose support"
 })
 
 --------------------------------------------------------------------------------
@@ -52,6 +52,33 @@ plugin:onInit(function(config)
         status = "unknown",
         lastUpdate = 0
     })
+
+    ---------------------------------------------------------------------------
+    -- SENSORS & CONTROLS (for expose API)
+    -- Użytkownik może eksponować te sensory/kontrolki do Home Assistant
+    ---------------------------------------------------------------------------
+
+    -- Sensor: tylko do odczytu (getter)
+    plugin:sensor("value", function()
+        return state.value
+    end)
+
+    -- Sensor: status jako binary (0/1)
+    plugin:sensor("ready", function()
+        return state.ready and 1 or 0
+    end)
+
+    -- Control: do odczytu i zapisu (getter + setter)
+    plugin:control("target",
+        function() return state.value end,           -- getter
+        function(v)                                   -- setter
+            state.value = v
+            plugin:log("info", "Target set to: " .. tostring(v))
+            -- Notify sensor about change
+            local sensor = plugin:get("value")
+            if sensor and sensor._notify then sensor:_notify() end
+        end
+    )
 
     -- If enabled, setup polling
     if enabled and config.apiUrl then
@@ -127,6 +154,14 @@ function setupPoller(apiUrl, intervalSec)
                     })
 
                     plugin:log("info", "Data updated: value=" .. state.value)
+
+                    -- Notify sensors for expose API
+                    local function notifySensor(id)
+                        local sensor = plugin:get(id)
+                        if sensor and sensor._notify then sensor:_notify() end
+                    end
+                    notifySensor("value")
+                    notifySensor("ready")
 
                     -- Emit event z throttlingiem (max 1x na 60s)
                     plugin:emit("example:updated", {
@@ -297,6 +332,46 @@ local all = Plugin.list()
 for _, p in ipairs(all) do
     plugin:log("debug", "Loaded: " .. p.id)
 end
+]]
+
+--------------------------------------------------------------------------------
+-- PRZYKŁAD: Expose API (eksponowanie do Home Assistant / HomeKit)
+--------------------------------------------------------------------------------
+--[[
+-- W user.lua użytkownik może eksponować sensory/kontrolki pluginu:
+
+local example = Plugin.get("@vclu/example")
+
+-- Eksponuj sensor jako number
+expose(example:get("value"), "number", {
+    name = "Example Value",
+    area = "Techniczny",
+    min = 0,
+    max = 100,
+    unit = "units"
+})
+
+-- Eksponuj status jako binary sensor
+expose(example:get("ready"), "sensor", {
+    name = "Example Ready",
+    area = "Techniczny"
+})
+
+-- Eksponuj kontrolkę (z możliwością zapisu)
+expose(example:get("target"), "number", {
+    name = "Example Target",
+    area = "Techniczny",
+    min = 0,
+    max = 100,
+    step = 1
+})
+
+-- Plugin sam definiuje sensory/kontrolki przez:
+--   plugin:sensor("id", getter)           -- tylko odczyt
+--   plugin:control("id", getter, setter)  -- odczyt + zapis
+--
+-- Użytkownik eksponuje przez:
+--   expose(plugin:get("id"), "type", { options })
 ]]
 
 --------------------------------------------------------------------------------

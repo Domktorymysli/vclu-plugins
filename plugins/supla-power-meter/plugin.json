@@ -1,8 +1,8 @@
 {
   "id": "supla-power-meter",
   "name": "Supla Power Meter",
-  "version": "1.0.0",
-  "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
+  "version": "2.1.0",
+  "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API z expose API",
   "author": "vCLU Team",
   "license": "MIT",
 
@@ -37,6 +37,23 @@
         "description": "Aktualne dane licznika energii"
       }
     },
+    "sensors": [
+      { "id": "power", "type": "number", "unit": "W", "description": "Moc całkowita" },
+      { "id": "current", "type": "number", "unit": "A", "description": "Prąd całkowity" },
+      { "id": "energy", "type": "number", "unit": "kWh", "description": "Energia pobrana" },
+      { "id": "reverseEnergy", "type": "number", "unit": "kWh", "description": "Energia oddana" },
+      { "id": "frequency", "type": "number", "unit": "Hz", "description": "Częstotliwość sieci" },
+      { "id": "connected", "type": "sensor", "description": "Status połączenia (0/1)" },
+      { "id": "voltage1", "type": "number", "unit": "V", "description": "Napięcie fazy 1" },
+      { "id": "voltage2", "type": "number", "unit": "V", "description": "Napięcie fazy 2" },
+      { "id": "voltage3", "type": "number", "unit": "V", "description": "Napięcie fazy 3" },
+      { "id": "power1", "type": "number", "unit": "W", "description": "Moc fazy 1" },
+      { "id": "power2", "type": "number", "unit": "W", "description": "Moc fazy 2" },
+      { "id": "power3", "type": "number", "unit": "W", "description": "Moc fazy 3" },
+      { "id": "current1", "type": "number", "unit": "A", "description": "Prąd fazy 1" },
+      { "id": "current2", "type": "number", "unit": "A", "description": "Prąd fazy 2" },
+      { "id": "current3", "type": "number", "unit": "A", "description": "Prąd fazy 3" }
+    ],
     "events": [
       { "name": "supla:updated", "description": "Dane zostały zaktualizowane" },
       { "name": "supla:error", "description": "Błąd komunikacji z API" },

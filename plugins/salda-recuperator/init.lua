@@ -1,6 +1,52 @@
 --- Salda Recuperator Plugin for vCLU
--- Integration with Salda heat recovery ventilation system
+-- Integration with Salda heat recovery ventilation system via HTTP API.
+--
 -- @module plugins.salda-recuperator
+--
+-- ## Expose API Usage
+--
+-- ```lua
+-- local salda = Plugin.get("@vclu/salda-recuperator")
+--
+-- -- Fan speed control (0-4 levels)
+-- expose(salda:get("fanSpeed"), "fan", {
+--     name = "Rekuperator",
+--     area = "Techniczny",
+--     min = 0,
+--     max = 4,
+--     step = 1
+-- })
+--
+-- -- Temperature setpoint (15-30°C)
+-- expose(salda:get("temperature"), "number", {
+--     name = "Temperatura Zadana",
+--     area = "Techniczny",
+--     min = 15,
+--     max = 30,
+--     step = 1,
+--     unit = "°C"
+-- })
+--
+-- -- Temperature sensors
+-- expose(salda:get("supplyAir"), "temperature", { name = "Nawiew", area = "Techniczny" })
+-- expose(salda:get("exhaustAir"), "temperature", { name = "Wywiew", area = "Techniczny" })
+-- expose(salda:get("outsideAir"), "temperature", { name = "Zewnętrzna", area = "Techniczny" })
+--
+-- -- Humidity sensor (0-100%)
+-- expose(salda:get("humidity"), "humidity", { name = "Wilgotność", area = "Techniczny" })
+-- ```
+--
+-- ## Available Sensors & Controls
+--
+-- | ID           | Type     | Range   | Description            |
+-- |--------------|----------|---------|------------------------|
+-- | fanSpeed     | control  | 0-4     | Fan speed level        |
+-- | temperature  | control  | 15-30   | Temperature setpoint   |
+-- | supplyAir    | sensor   | °C      | Supply air temperature |
+-- | exhaustAir   | sensor   | °C      | Exhaust air temp       |
+-- | extractAir   | sensor   | °C      | Extract air temp       |
+-- | outsideAir   | sensor   | °C      | Outside air temp       |
+-- | humidity     | sensor   | 0-100%  | Air humidity           |
 
 --------------------------------------------------------------------------------
 -- PLUGIN REGISTRATION
@@ -8,8 +54,8 @@
 
 local salda = Plugin:new("salda-recuperator", {
     name = "Salda Recuperator",
-    version = "2.0.0",
-    description = "Salda recuperator integration"
+    version = "2.1.0",
+    description = "Salda recuperator integration with expose API support"
 })
 
 --------------------------------------------------------------------------------
@@ -144,6 +190,37 @@ salda:onInit(function(config)
         lastUpdate = 0
     })
 
+    ---------------------------------------------------------------------------
+    -- SENSORS & CONTROLS (for expose API)
+    ---------------------------------------------------------------------------
+
+    -- Temperature sensors (read-only)
+    salda:sensor("supplyAir", function() return state.supplyAir end)
+    salda:sensor("exhaustAir", function() return state.exhaustAir end)
+    salda:sensor("extractAir", function() return state.extractAir end)
+    salda:sensor("outsideAir", function() return state.outsideAir end)
+
+    -- Humidity sensor (read-only, returns 0-100%)
+    salda:sensor("humidity", function() return math.floor(state.humidity * 100) end)
+
+    -- Fan speed control (read/write, 0-4 levels)
+    -- Compatible with expose(..., "fan", { min = 0, max = 4, step = 1 })
+    salda:control("fanSpeed",
+        function() return state.fanSpeed end,
+        function(level)
+            salda:setFanSpeed(level)
+        end
+    )
+
+    -- Temperature setpoint control (read/write, 15-30°C)
+    -- Compatible with expose(..., "number", { min = 15, max = 30, step = 1 })
+    salda:control("temperature",
+        function() return state.temperature end,
+        function(temp)
+            salda:setTemperature(temp)
+        end
+    )
+
     -- Create poller
     poller = salda:poller("fetch", {
         interval = interval * 1000,
@@ -224,6 +301,20 @@ salda:onInit(function(config)
                         "Data: supply=%.1f°C, outside=%.1f°C, humidity=%.0f%%, fan=%d, setpoint=%d°C",
                         data.supplyAir, data.outsideAir, data.humidity * 100, data.fanSpeed, data.temperature
                     ))
+
+                    -- Notify sensors/controls for expose API
+                    local function notifySensor(id)
+                        local sensor = salda:get(id)
+                        if sensor and sensor._notify then sensor:_notify() end
+                    end
+
+                    notifySensor("supplyAir")
+                    notifySensor("exhaustAir")
+                    notifySensor("extractAir")
+                    notifySensor("outsideAir")
+                    notifySensor("humidity")
+                    notifySensor("fanSpeed")
+                    notifySensor("temperature")
 
                     -- Emit event
                     if changed then

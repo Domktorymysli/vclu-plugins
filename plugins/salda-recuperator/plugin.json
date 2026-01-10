@@ -1,8 +1,8 @@
 {
   "id": "salda-recuperator",
   "name": "Salda Recuperator",
-  "version": "1.0.0",
-  "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie",
+  "version": "2.1.0",
+  "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie z expose API",
   "author": "vCLU",
   "license": "MIT",
 
@@ -47,6 +47,17 @@
         "description": "Aktualne dane rekuperatora"
       }
     },
+    "sensors": [
+      { "id": "supplyAir", "type": "temperature", "description": "Temperatura nawiewu" },
+      { "id": "exhaustAir", "type": "temperature", "description": "Temperatura wywiewu" },
+      { "id": "extractAir", "type": "temperature", "description": "Temperatura wyciągu" },
+      { "id": "outsideAir", "type": "temperature", "description": "Temperatura zewnętrzna" },
+      { "id": "humidity", "type": "humidity", "description": "Wilgotność powietrza 0-100%" }
+    ],
+    "controls": [
+      { "id": "fanSpeed", "type": "fan", "range": "0-4", "description": "Prędkość wentylatora (biegi)" },
+      { "id": "temperature", "type": "number", "range": "15-30", "description": "Temperatura zadana °C" }
+    ],
     "events": [
       { "name": "salda:updated", "description": "Dane zostały zaktualizowane" },
       { "name": "salda:error", "description": "Błąd komunikacji z rekuperatorem" }

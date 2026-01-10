@@ -1,0 +1,19 @@
+{
+  "id": "influx-metrics",
+  "name": "InfluxDB Metrics",
+  "version": "1.1.0",
+  "description": "Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics (line protocol)",
+  "author": "vCLU Team",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer"]
+  },
+
+  "config": {}
+}

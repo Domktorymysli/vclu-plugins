@@ -1,6 +1,6 @@
 # Supla Power Meter Plugin
 
-Integracja z 3-fazowym licznikiem energii Supla przez Direct Links API.
+Integracja z 3-fazowym licznikiem energii Supla przez Direct Links API z expose API.
 
 ## Wymagania
 
@@ -121,6 +121,75 @@ Każda faza zawiera:
 | `phaseAngle`    | Kąt fazowy        | °         |
 | `forwardEnergy` | Energia pobrana   | kWh       |
 | `reverseEnergy` | Energia oddana    | kWh       |
+
+## Expose do Home Assistant
+
+Plugin udostępnia sensory przez `plugin:get()`:
+
+| ID            | Unit | Opis                     |
+|---------------|------|--------------------------|
+| `power`       | W    | Moc całkowita            |
+| `current`     | A    | Prąd całkowity           |
+| `energy`      | kWh  | Energia pobrana          |
+| `reverseEnergy`| kWh | Energia oddana           |
+| `frequency`   | Hz   | Częstotliwość sieci      |
+| `connected`   | 0/1  | Status połączenia        |
+| `voltage1/2/3`| V    | Napięcie fazy 1/2/3      |
+| `power1/2/3`  | W    | Moc fazy 1/2/3           |
+| `current1/2/3`| A    | Prąd fazy 1/2/3          |
+
+### Przykład - expose do HA
+
+```lua
+local supla = Plugin.get("@vclu/supla-power-meter")
+
+-- Moc całkowita
+expose(supla:get("power"), "number", {
+    name = "Moc Całkowita",
+    area = "Techniczny",
+    unit = "W",
+    min = -10000,  -- ujemna = eksport do sieci
+    max = 20000
+})
+
+-- Energia pobrana
+expose(supla:get("energy"), "number", {
+    name = "Energia Pobrana",
+    area = "Techniczny",
+    unit = "kWh"
+})
+
+-- Napięcia per-faza
+expose(supla:get("voltage1"), "number", { name = "Napięcie L1", area = "Techniczny", unit = "V" })
+expose(supla:get("voltage2"), "number", { name = "Napięcie L2", area = "Techniczny", unit = "V" })
+expose(supla:get("voltage3"), "number", { name = "Napięcie L3", area = "Techniczny", unit = "V" })
+
+-- Moc per-faza
+expose(supla:get("power1"), "number", { name = "Moc L1", area = "Techniczny", unit = "W" })
+expose(supla:get("power2"), "number", { name = "Moc L2", area = "Techniczny", unit = "W" })
+expose(supla:get("power3"), "number", { name = "Moc L3", area = "Techniczny", unit = "W" })
+
+-- Częstotliwość
+expose(supla:get("frequency"), "number", { name = "Częstotliwość", area = "Techniczny", unit = "Hz" })
+```
+
+### Expose - tylko podstawowe
+
+```lua
+local supla = Plugin.get("@vclu/supla-power-meter")
+
+-- Tylko moc i energia
+expose(supla:get("power"), "number", { name = "Moc", area = "Techniczny", unit = "W" })
+expose(supla:get("energy"), "number", { name = "Energia", area = "Techniczny", unit = "kWh" })
+```
+
+### Rezultat w Home Assistant
+
+Po expose w HA pojawią się:
+- **sensor.moc_calkowita** - aktualna moc [W]
+- **sensor.energia_pobrana** - licznik energii [kWh]
+- **sensor.napiecie_l1/l2/l3** - napięcia faz [V]
+- **sensor.moc_l1/l2/l3** - moc per-faza [W]
 
 ## Przykłady automatyzacji
 

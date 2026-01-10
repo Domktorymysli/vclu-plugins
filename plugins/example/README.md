@@ -136,6 +136,53 @@ plugin:on("eventName", function(...) ... end)
 plugin:emit("eventName", data)
 ```
 
+### Sensors & Controls (expose API)
+
+Plugin może definiować sensory i kontrolki, które użytkownik może eksponować do Home Assistant:
+
+```lua
+-- W init.lua pluginu:
+
+-- Sensor: tylko do odczytu
+plugin:sensor("temperature", function()
+    return state.temperature
+end)
+
+-- Control: odczyt + zapis
+plugin:control("setpoint",
+    function() return state.setpoint end,      -- getter
+    function(v) state.setpoint = v end         -- setter
+)
+
+-- WAŻNE: Po aktualizacji stanu wywołaj _notify():
+local function notifySensor(id)
+    local sensor = plugin:get(id)
+    if sensor and sensor._notify then sensor:_notify() end
+end
+notifySensor("temperature")
+```
+
+**Użycie w user.lua:**
+
+```lua
+local myPlugin = Plugin.get("@vclu/moj-plugin")
+
+-- Eksponuj sensor
+expose(myPlugin:get("temperature"), "temperature", {
+    name = "Moja Temperatura",
+    area = "Salon"
+})
+
+-- Eksponuj kontrolkę
+expose(myPlugin:get("setpoint"), "number", {
+    name = "Setpoint",
+    area = "Salon",
+    min = 15,
+    max = 30,
+    step = 0.5
+})
+```
+
 ### Dostęp do innych pluginów
 
 ```lua
