@@ -2,6 +2,53 @@
 
 Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics lub dowolnego endpointu obsługującego line protocol.
 
+## Quick Start
+
+### 1. Instalacja InfluxDB (Raspberry Pi / Debian)
+
+```bash
+# Zainstaluj InfluxDB 1.x
+sudo apt-get update && sudo apt-get install -y influxdb
+sudo systemctl enable influxdb && sudo systemctl start influxdb
+
+# Utwórz bazę danych
+curl -X POST 'http://localhost:8086/query' --data-urlencode 'q=CREATE DATABASE vclu'
+```
+
+### 2. Konfiguracja w vCLU
+
+W pliku `user_script.lua`:
+
+```lua
+local metrics = Plugin.get("@vclu/influx-metrics")
+
+local m = metrics:create({
+    url = "http://localhost:8086/write?db=vclu",
+    interval = 60,
+    tags = { host = "vclu" }
+})
+
+-- Przykład: wysyłaj temperaturę co minutę
+m:gauge("temperature", 22.5, { room = "salon" })
+```
+
+### 3. Grafana (opcjonalnie)
+
+```bash
+# Zainstaluj Grafanę
+sudo apt-get install -y grafana
+sudo systemctl enable grafana-server && sudo systemctl start grafana-server
+
+# Dodaj datasource (lub przez UI na http://localhost:3000)
+curl -X POST http://admin:admin@localhost:3000/api/datasources \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"InfluxDB","type":"influxdb","url":"http://localhost:8086","database":"vclu","access":"proxy"}'
+```
+
+Otwórz Grafanę na `http://localhost:3000` (admin/admin) i twórz dashboardy.
+
+---
+
 ## Cechy
 
 - **Line Protocol** - kompatybilny z InfluxDB 1.x, 2.x, Telegraf, VictoriaMetrics, QuestDB
@@ -345,3 +392,52 @@ metrics:create({
     batchSize = 200  -- lub po 200 punktach
 })
 ```
+
+## Zapytania InfluxDB
+
+### CLI / HTTP API
+
+```bash
+# Ostatnie 10 pomiarów temperatury
+curl -G 'http://localhost:8086/query?db=vclu' \
+  --data-urlencode 'q=SELECT * FROM temperature ORDER BY time DESC LIMIT 10'
+
+# Średnia z ostatniej godziny
+curl -G 'http://localhost:8086/query?db=vclu' \
+  --data-urlencode 'q=SELECT MEAN(value) FROM temperature WHERE time > now() - 1h GROUP BY room'
+
+# Lista measurements
+curl -G 'http://localhost:8086/query?db=vclu' \
+  --data-urlencode 'q=SHOW MEASUREMENTS'
+```
+
+### Grafana - przykładowe query
+
+**Panel: Temperatura w czasie**
+```sql
+SELECT mean("value") FROM "temperature" WHERE $timeFilter GROUP BY time(5m), "room" fill(previous)
+```
+
+**Panel: Aktualna moc**
+```sql
+SELECT last("power") FROM "power_meter" WHERE $timeFilter
+```
+
+**Panel: Zużycie energii dzienne**
+```sql
+SELECT difference(last("energy")) FROM "power_meter" WHERE $timeFilter GROUP BY time(1d) fill(none)
+```
+
+## Porównanie z Prometheus
+
+| Cecha | InfluxDB (ten plugin) | Prometheus (/metrics) |
+|-------|----------------------|----------------------|
+| Model | Push (wysyłasz metryki) | Pull (Prometheus pobiera) |
+| Retencja | Konfigurowalnie długa | Domyślnie 15 dni |
+| Zapytania | InfluxQL / Flux | PromQL |
+| Użycie | Dowolne dane z Lua | Metryki systemowe vCLU |
+| Tagi | Pełna kontrola | Stałe labele |
+
+**Kiedy używać którego:**
+- **Prometheus** - monitoring systemu vCLU (uptime, goroutines, HTTP requests)
+- **InfluxDB** - dane z sensorów, zużycie energii, własne metryki biznesowe

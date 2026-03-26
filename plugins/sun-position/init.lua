@@ -395,8 +395,8 @@ sun:onInit(function(config)
         updateCalculations()
         scheduleEvents()
 
-        -- Set up daily recalculation
-        sun:setInterval(86400000, function()
+        -- Set up daily recalculation (tracked so cleanup works)
+        timers.daily = sun:setInterval(86400000, function()
             updateCalculations()
             scheduleEvents()
         end)

@@ -442,11 +442,10 @@ end
 
 function salda:setFanSpeed(level)
     level = math.max(0, math.min(4, salda:coerceNumber(level, 1)))
-    local rawSpeed = fanLevelToRaw(level)
 
-    salda:log("info", "Setting fan speed to level " .. level .. " (raw: " .. rawSpeed .. ")")
+    salda:log("info", "Setting fan speed to level " .. level)
 
-    request("FUNC(4,1,6,0," .. rawSpeed .. ")", function(body, err)
+    request("FUNC(4,1,6,0," .. level .. ")", function(body, err)
         if err then
             salda:log("error", "Set fan speed failed: " .. tostring(err))
             return
