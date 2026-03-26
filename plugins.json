@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2025-01-01T00:00:00Z",
+  "updated": "2026-03-26T20:36:27Z",
   "plugins": [
     {
       "id": "weather",
@@ -14,22 +14,32 @@
       "description": "Dane pogodowe z OpenWeatherMap",
       "author": "tytus",
       "path": "plugins/weather",
-      "tags": ["weather", "automation", "sensors"],
+      "tags": [
+        "weather",
+        "automation",
+        "sensors"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "weather-v1.0.0"
     },
     {
       "id": "example",
       "name": "Example Plugin",
-      "version": "1.0.0",
+      "version": "2.1.0",
       "description": "Przykładowy plugin - szablon do tworzenia własnych pluginów",
       "author": "vCLU Team",
       "path": "plugins/example",
-      "tags": ["example", "template", "tutorial"],
+      "tags": [
+        "example",
+        "template",
+        "tutorial"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "example-v2.1.0"
     },
     {
       "id": "time-sync",
@@ -38,22 +48,36 @@
       "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
       "author": "vCLU Team",
       "path": "plugins/time-sync",
-      "tags": ["time", "ntp", "sync", "clock", "automation"],
+      "tags": [
+        "time",
+        "ntp",
+        "sync",
+        "clock",
+        "automation"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "time-sync-v1.0.0"
     },
     {
       "id": "salda-recuperator",
       "name": "Salda Recuperator",
-      "version": "1.0.0",
+      "version": "2.1.0",
       "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie",
       "author": "vCLU Team",
       "path": "plugins/salda-recuperator",
-      "tags": ["hvac", "recuperator", "ventilation", "salda", "automation"],
+      "tags": [
+        "hvac",
+        "recuperator",
+        "ventilation",
+        "salda",
+        "automation"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "salda-recuperator-v2.1.0"
     },
     {
       "id": "sun-position",
@@ -62,34 +86,57 @@
       "description": "Pozycja słońca, wschody/zachody, fazy księżyca - automatyzacja rolet",
       "author": "vCLU Team",
       "path": "plugins/sun-position",
-      "tags": ["sun", "moon", "astronomy", "blinds", "automation", "sunrise", "sunset"],
+      "tags": [
+        "sun",
+        "moon",
+        "astronomy",
+        "blinds",
+        "automation",
+        "sunrise",
+        "sunset"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "sun-position-v1.0.0"
     },
     {
       "id": "telegram",
       "name": "Telegram Notifications",
-      "version": "2.1.0",
+      "version": "1.3.0",
       "description": "Powiadomienia przez Telegram Bot API",
       "author": "vCLU Team",
       "path": "plugins/telegram",
-      "tags": ["notifications", "telegram", "alerts", "messaging"],
+      "tags": [
+        "notifications",
+        "telegram",
+        "alerts",
+        "messaging"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "telegram-v1.3.0"
     },
     {
       "id": "supla-power-meter",
       "name": "Supla Power Meter",
-      "version": "1.0.0",
+      "version": "2.1.0",
       "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
       "author": "vCLU Team",
       "path": "plugins/supla-power-meter",
-      "tags": ["energy", "power", "supla", "meter", "electricity", "photovoltaic"],
+      "tags": [
+        "energy",
+        "power",
+        "supla",
+        "meter",
+        "electricity",
+        "photovoltaic"
+      ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "supla-power-meter-v2.1.0"
     }
   ]
 }

@@ -1,0 +1,62 @@
+name: Tag plugin releases
+
+on:
+  push:
+    branches: [main]
+    paths: ['plugins/*/plugin.json']
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect version bumps, create tags, sync manifest
+        run: |
+          CHANGED=false
+
+          for manifest in plugins/*/plugin.json; do
+            plugin_id=$(jq -r '.id' "$manifest")
+            new_ver=$(jq -r '.version' "$manifest")
+
+            # Get latest existing tag for this plugin
+            latest_tag=$(git tag --list "${plugin_id}-v*" --sort=-v:refname | head -n1)
+            latest_ver=""
+            if [ -n "$latest_tag" ]; then
+              latest_ver="${latest_tag#${plugin_id}-v}"
+            fi
+
+            if [ "$new_ver" != "$latest_ver" ] && [ -n "$new_ver" ]; then
+              tag="${plugin_id}-v${new_ver}"
+              echo "::notice::Tagging ${tag} (was: ${latest_ver:-none})"
+              git tag "$tag"
+              CHANGED=true
+
+              # Sync version + tag into plugins.json manifest
+              jq --arg id "$plugin_id" \
+                 --arg ver "$new_ver" \
+                 --arg tag "$tag" \
+                 '(.plugins[] | select(.id == $id)) |= (.version = $ver | .tag = $tag)' \
+                 plugins.json > plugins.json.tmp && mv plugins.json.tmp plugins.json
+            fi
+          done
+
+          if [ "$CHANGED" = true ]; then
+            # Update manifest timestamp
+            jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.updated = $ts' \
+              plugins.json > plugins.json.tmp && mv plugins.json.tmp plugins.json
+
+            # Commit manifest changes
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add plugins.json
+            git commit -m "chore: sync plugin versions and tags"
+            git push origin main --tags
+          else
+            echo "No version bumps detected"
+          fi
