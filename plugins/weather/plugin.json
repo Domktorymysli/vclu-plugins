@@ -1,20 +1,24 @@
 {
   "id": "weather",
   "name": "Weather Plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "tytus",
   "license": "MIT",
   "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
-
   "docs": [
-    { "title": "Getting Started", "file": "README.md" }
+    {
+      "title": "Getting Started",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
     "vclu": ">=1.0.0",
-    "modules": ["http", "timer", "json"]
+    "modules": [
+      "http",
+      "timer",
+      "json"
+    ]
   },
-
   "config": {
     "apiKey": {
       "type": "string",
@@ -36,11 +40,13 @@
     },
     "units": {
       "type": "string",
-      "enum": ["metric", "imperial"],
+      "enum": [
+        "metric",
+        "imperial"
+      ],
       "default": "metric"
     }
   },
-
   "exports": {
     "objects": {
       "weather": {
