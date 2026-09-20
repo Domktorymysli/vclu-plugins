@@ -65,17 +65,37 @@ jobs:
 
           echo "All plugins validated successfully!"
 
+      # Syntax checking is luac, not lua. The old step called `lua -p`, which is
+      # not an option, and swallowed the failure with `|| true`.
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+
       - name: Lua syntax check
         run: |
-          for dir in plugins/*/; do
-            for file in "$dir"*.lua; do
-              if [ -f "$file" ]; then
-                echo "Checking $file"
-                if command -v lua5.3 &> /dev/null; then
-                  lua5.3 -p "$file" || exit 1
-                elif command -v lua &> /dev/null; then
-                  lua -p "$file" 2>/dev/null || true
-                fi
-              fi
-            done
+          rc=0
+          for file in plugins/*/*.lua test/*.lua; do
+            [ -f "$file" ] || continue
+            echo "Checking $file"
+            if ! luac5.4 -p "$file"; then
+              echo "ERROR: syntax error in $file"
+              rc=1
+            fi
           done
+          exit $rc
+
+      - name: Plugin tests
+        run: |
+          rc=0
+          found=0
+          for file in plugins/*/test.lua; do
+            [ -f "$file" ] || continue
+            found=1
+            echo "=== $file"
+            if ! lua5.4 "$file"; then
+              rc=1
+            fi
+          done
+          if [ "$found" = "0" ]; then
+            echo "No plugin tests found"
+          fi
+          exit $rc
