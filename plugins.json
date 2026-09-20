@@ -137,6 +137,27 @@
         "vclu": ">=1.0.0"
       },
       "tag": "supla-power-meter-v2.1.0"
+    },
+    {
+      "id": "modbus-gateway",
+      "name": "Modbus Gateway",
+      "version": "1.0.0",
+      "description": "Odczyt urządzeń Modbus RTU przez bramkę RS485-Ethernet (Waveshare, USR, Elfin) po Modbus TCP",
+      "author": "tytus",
+      "path": "plugins/modbus-gateway",
+      "tags": [
+        "modbus",
+        "rs485",
+        "energy",
+        "meter",
+        "gateway",
+        "waveshare",
+        "sdm120"
+      ],
+      "requires": {
+        "vclu": ">=1.1.0"
+      },
+      "tag": "modbus-gateway-v1.0.0"
     }
   ]
 }

@@ -1,0 +1,156 @@
+{
+  "id": "modbus-gateway",
+  "name": "Modbus Gateway",
+  "version": "1.0.0",
+  "description": "Odczyt urządzeń Modbus RTU przez bramkę RS485-Ethernet (Waveshare RS485 TO ETH, USR, Elfin) po Modbus TCP",
+  "author": "tytus",
+  "license": "MIT",
+  "docs": [
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
+  ],
+  "requires": {
+    "vclu": ">=1.1.0",
+    "modules": [
+      "modbus",
+      "timer",
+      "json"
+    ]
+  },
+  "config": {
+    "host": {
+      "type": "string",
+      "required": true,
+      "default": "192.168.0.9",
+      "description": "Adres IP bramki RS485-Ethernet"
+    },
+    "port": {
+      "type": "number",
+      "default": 502,
+      "min": 1,
+      "max": 65535,
+      "description": "Port TCP bramki (Waveshare domyślnie 4196, standard Modbus TCP to 502)"
+    },
+    "interval": {
+      "type": "number",
+      "default": 30,
+      "min": 5,
+      "max": 3600,
+      "description": "Interwał odczytu w sekundach"
+    },
+    "timeout": {
+      "type": "number",
+      "default": 2000,
+      "min": 200,
+      "max": 10000,
+      "description": "Timeout pojedynczej transakcji Modbus w ms"
+    },
+    "devices": {
+      "type": "array",
+      "required": true,
+      "description": "Lista urządzeń na magistrali. Wpis to sam adres Modbus (np. 2) albo obiekt { id, unit, name, profile }. Wymagany jest tylko unit (1-247); id domyślnie meter<unit>, profile domyślnie sdm120. Profile: sdm120, sdm220, sdm230. Zamiast profilu można podać własną mapę w polu registers.",
+      "default": [
+        1
+      ]
+    }
+  },
+  "exports": {
+    "objects": {
+      "gateway": {
+        "type": "ModbusGatewayData",
+        "description": "Stan bramki (host, port, liczba urządzeń, ostatni odczyt)"
+      },
+      "devices": {
+        "type": "ModbusDeviceMap",
+        "description": "Stan i odczyty każdego skonfigurowanego urządzenia"
+      }
+    },
+    "sensors": [
+      {
+        "id": "online",
+        "type": "binary_sensor",
+        "description": "Czy którekolwiek urządzenie odpowiedziało"
+      },
+      {
+        "id": "<device>_voltage",
+        "type": "number",
+        "unit": "V",
+        "description": "Napięcie"
+      },
+      {
+        "id": "<device>_current",
+        "type": "number",
+        "unit": "A",
+        "description": "Prąd"
+      },
+      {
+        "id": "<device>_power",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc czynna"
+      },
+      {
+        "id": "<device>_apparent",
+        "type": "number",
+        "unit": "VA",
+        "description": "Moc pozorna"
+      },
+      {
+        "id": "<device>_reactive",
+        "type": "number",
+        "unit": "var",
+        "description": "Moc bierna"
+      },
+      {
+        "id": "<device>_pf",
+        "type": "number",
+        "description": "Współczynnik mocy"
+      },
+      {
+        "id": "<device>_frequency",
+        "type": "number",
+        "unit": "Hz",
+        "description": "Częstotliwość sieci"
+      },
+      {
+        "id": "<device>_energy",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Energia pobrana"
+      },
+      {
+        "id": "<device>_exported",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Energia oddana"
+      },
+      {
+        "id": "<device>_total",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Energia łącznie"
+      },
+      {
+        "id": "<device>_online",
+        "type": "binary_sensor",
+        "description": "Czy urządzenie odpowiada"
+      }
+    ],
+    "events": [
+      {
+        "name": "modbus:updated",
+        "description": "Cykl odczytu zakończony powodzeniem"
+      },
+      {
+        "name": "modbus:error",
+        "description": "Żadne urządzenie nie odpowiedziało"
+      },
+      {
+        "name": "modbus:device_offline",
+        "description": "Urządzenie przestało odpowiadać"
+      }
+    ]
+  }
+}
