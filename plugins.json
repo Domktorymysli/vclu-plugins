@@ -161,8 +161,8 @@
     {
       "id": "modbus-gateway",
       "name": "Modbus Gateway",
-      "version": "1.0.0",
-      "description": "Odczyt urządzeń Modbus RTU przez bramkę RS485-Ethernet (Waveshare, USR, Elfin) po Modbus TCP",
+      "version": "2.0.0",
+      "description": "Fabryka bramek Modbus RTU po RS485-Ethernet (Waveshare, USR, Elfin). Bramki deklarujesz w kodzie przez create(), wiec jedno vCLU obsluguje ich dowolnie wiele.",
       "author": "tytus",
       "path": "plugins/modbus-gateway",
       "tags": [
@@ -177,7 +177,7 @@
       "requires": {
         "vclu": ">=1.1.0"
       },
-      "tag": "modbus-gateway-v1.0.0"
+      "tag": "modbus-gateway-v2.0.0"
     },
     {
       "id": "frigate",

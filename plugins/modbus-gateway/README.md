@@ -5,6 +5,8 @@ po Modbus TCP. Testowane na **Waveshare RS485 TO ETH (B)** z trzema licznikami
 energii **VCX SDM120M**.
 
 - 🔌 **W pełni lokalnie** — bez chmury, bez mostków, bez osobnych procesów
+- 🏭 **Fabryka, nie singleton** — bramki deklarujesz w kodzie przez `create()`,
+  więc jedno vCLU obsługuje ich dowolnie wiele
 - ⚡ **Blokowy odczyt** — profil `sdm120` czyta licznik trzema transakcjami
   (`0x0000/32`, `0x0046/10`, `0x0156/4`) zamiast dziesięcioma; sześć podstawowych
   parametrów z pierwszego zwartego zakresu schodzi jednym zapytaniem
@@ -17,100 +19,120 @@ energii **VCX SDM120M**.
 - Bramka w trybie **TCP Server** z włączonym **Modbus TCP to RTU**
 - Parametry portu szeregowego zgodne z magistralą (SDM120M fabrycznie **9600 8N1**)
 
-## Konfiguracja
+## Deklaracja bramki
 
-Najkrótsza wersja — adres bramki i adresy liczników na magistrali. Profil `sdm120`
-jest domyślny, `id` robi się z adresu:
-
-```json
-{
-  "host": "192.168.0.9",
-  "port": 4196,
-  "devices": [1, 2, 3]
-}
-```
-
-Daje to sensory `meter1_power`, `meter2_energy` i tak dalej.
-
-Pełna wersja, gdy chcesz własne nazwy albo inny profil:
-
-```json
-{
-  "host": "192.168.0.9",
-  "port": 4196,
-  "interval": 30,
-  "timeout": 2000,
-  "devices": [
-    { "id": "ladowarka", "unit": 1, "name": "Ładowarka samochodu",       "profile": "sdm120" },
-    { "id": "klima",     "unit": 2, "name": "Klimatyzator i rekuperator", "profile": "sdm120" },
-    { "id": "pralnia",   "unit": 3, "name": "Pralka i suszarka",          "profile": "sdm120" }
-  ]
-}
-```
-
-| Pole | Domyślnie | Opis |
-|---|---|---|
-| `host` | — | Adres IP bramki (wymagane) |
-| `port` | 502 | Port TCP. Waveshare fabrycznie **4196** |
-| `interval` | 30 | Co ile sekund odczyt |
-| `timeout` | 2000 | Timeout pojedynczej transakcji w ms |
-| `devices` | — | Lista urządzeń (wymagane) |
-
-Wpis urządzenia to albo **sam adres** (`2`), albo obiekt. Wymagany jest tylko
-`unit` (adres Modbus 1–247); `id` domyślnie `meter<unit>`, `name` domyślnie `id`,
-`profile` domyślnie `sdm120`. Obie formy można mieszać w jednej liście.
-Dostępne profile: `sdm120`, `sdm220`, `sdm230`.
-
-## Użycie w `user.lua`
+Plugin nie ma sekcji konfiguracji w panelu. Bramkę tworzysz w module albo
+w `user.lua`, tam gdzie i tak piszesz resztę logiki:
 
 ```lua
-local mb = Plugin.get("@vclu/modbus-gateway")
+local modbus = Plugin.get("@vclu/modbus-gateway")
 
-expose(mb:get("pralnia_power"),  "number", { name = "Pralnia moc",     area = "Energia", unit = "W" })
-expose(mb:get("pralnia_energy"), "number", { name = "Pralnia zużycie", area = "Energia", unit = "kWh" })
-expose(mb:get("pralnia_online"), "binary_sensor", { name = "Licznik pralni", area = "Energia" })
+local garaz = modbus:create({
+    id       = "garaz",
+    host     = "192.168.0.9",
+    port     = 4196,
+    interval = 30,
+    devices  = {
+        { id = "ladowarka", unit = 1, name = "Ładowarka auta" },
+        { id = "klima",     unit = 2, name = "Klimatyzacja" },
+        { id = "pralnia",   unit = 3, name = "Pralka i suszarka" }
+    }
+})
+```
 
-expose(mb:get("klima_power"),    "number", { name = "Klimatyzacja moc", area = "Energia", unit = "W" })
-expose(mb:get("ladowarka_power"),"number", { name = "Ładowarka moc",    area = "Energia", unit = "W" })
+Druga bramka to po prostu drugie wywołanie:
+
+```lua
+local kotlownia = modbus:create({
+    id = "kotlownia", host = "192.168.0.14",
+    devices = { { id = "kociol", unit = 1 } }
+})
+```
+
+Gdy domyślne wartości pasują, urządzenie można podać samym adresem Modbus.
+`devices = { 1, 2, 3 }` daje `meter1`, `meter2` i `meter3` na profilu `sdm120`.
+Obie formy wolno mieszać w jednej liście.
+
+### Opcje `create()`
+
+| Opcja | Domyślnie | Opis |
+|---|---|---|
+| `host` | wymagane | Adres IP bramki |
+| `id` | `gw1`, `gw2`… | Identyfikator bramki, daje sensor `gateway_<id>_online` |
+| `port` | `502` | Port TCP. Waveshare fabrycznie `4196` |
+| `interval` | `30` | Interwał odczytu w sekundach |
+| `timeout` | `2000` | Timeout pojedynczej transakcji w ms |
+| `devices` | wymagane | Lista urządzeń na magistrali |
+| `autostart` | `true` | Czy od razu wystartować poller |
+
+Wpis urządzenia przyjmuje `unit` (adres Modbus 1–247, jedyne pole wymagane),
+`id` (domyślnie `meter<unit>`), `name` (domyślnie `id`), `profile` (domyślnie
+`sdm120`) oraz `registers` i `fc` dla własnej mapy.
+Dostępne profile: `sdm120`, `sdm220`, `sdm230`.
+
+Identyfikatory urządzeń są płaskie na całe vCLU, bo z nich powstają nazwy
+sensorów. Jeśli druga bramka poda `id` już zajęte, plugin pominie to urządzenie
+i zapisze błąd w logu, zamiast po cichu przesłonić pierwsze.
+
+## Wystawianie sensorów
+
+```lua
+expose(garaz:get("pralnia_power"),  "number", { name = "Pralnia moc",     area = "Energia", unit = "W" })
+expose(garaz:get("pralnia_energy"), "number", { name = "Pralnia zużycie", area = "Energia", unit = "kWh" })
+expose(garaz:get("pralnia_online"), "binary_sensor", { name = "Licznik pralni", area = "Energia" })
+
+expose(garaz:get("klima_power"),     "number", { name = "Klimatyzacja moc", area = "Energia", unit = "W" })
+expose(garaz:get("ladowarka_power"), "number", { name = "Ładowarka moc",    area = "Energia", unit = "W" })
+
+expose(garaz:get("gateway_garaz_online"), "binary_sensor", { name = "Bramka garaż", area = "Energia" })
 ```
 
 Sensor nazywa się `<id urządzenia>_<pole>`. Dostępne pola: `voltage`, `current`,
 `power`, `apparent`, `reactive`, `pf`, `frequency`, `energy`, `exported`,
-`total`, `online`.
+`total`, `online`. Każda bramka dokłada własny `gateway_<id bramki>_online`,
+w osobnej przestrzeni nazw, żeby bramka nazwana jak urządzenie nie przesłoniła
+jego sensora.
 
 ## API
 
 ```lua
-local mb = Plugin.get("@vclu/modbus-gateway")
-
-mb:isOnline()                      -- czy cokolwiek odpowiada
-mb:getValue("pralnia", "power")    -- pojedyncza wartość
-mb:getDevice("pralnia")            -- { online, lastError, values }
-mb:listDevices()                   -- lista skonfigurowanych urządzeń
-mb:refresh()                       -- wymuś odczyt teraz
-mb:getStats()                      -- liczniki transakcji i błędów
+garaz:isOnline()                      -- czy cokolwiek na tej bramce odpowiada
+garaz:getValue("pralnia", "power")    -- pojedyncza wartość
+garaz:getDevice("pralnia")            -- { online, lastError, values }
+garaz:listDevices()                   -- lista urządzeń tej bramki
+garaz:refresh()                       -- wymuś odczyt teraz
+garaz:stop() / garaz:start()          -- zatrzymaj i wznów poller
+garaz:getStats()                      -- liczniki transakcji i błędów
 
 -- Surowy odczyt urządzenia bez profilu
-mb:read({ unit = 5, addr = 0x0100, qty = 4 }, function(registers, err)
+garaz:read({ unit = 5, addr = 0x0100, qty = 4 }, function(registers, err)
     if err then Logger:warn(err) return end
     Logger:info("temperatura: " .. Modbus.toFloat32(registers[1], registers[2]))
 end)
 
 -- Zapis pojedynczego rejestru (FC06)
-mb:write({ unit = 5, addr = 0x0020, value = 3 }, function(echo, err) end)
+garaz:write({ unit = 5, addr = 0x0020, value = 3 }, function(echo, err) end)
+```
+
+Na poziomie pluginu:
+
+```lua
+modbus:gateway("garaz")   -- bramka po id
+modbus:getGateways()      -- wszystkie utworzone bramki
+modbus:listProfiles()     -- dostępne profile urządzeń
 ```
 
 ## Własna mapa rejestrów
 
 Zamiast `profile` można podać `registers`:
 
-```json
+```lua
 {
-  "id": "kociol", "unit": 5,
-  "registers": [
-    { "id": "temp_zasilania", "addr": 16, "type": "float" },
-    { "id": "tryb",           "addr": 32, "type": "int16" }
-  ]
+    id = "kociol", unit = 5,
+    registers = {
+        { id = "temp_zasilania", addr = 0x0010, type = "float" },
+        { id = "tryb",           addr = 0x0020, type = "int16" }
+    }
 }
 ```
 
@@ -123,11 +145,14 @@ się błędem `illegal data address`. Urządzenia z własną mapą są czytane p
 
 ```lua
 EventBus:on("modbus:updated", function(data) end)
-EventBus:on("modbus:error", function(data) Logger:warn(data.error) end)
+EventBus:on("modbus:error", function(data) Logger:warn(data.gateway .. ": " .. data.error) end)
 EventBus:on("modbus:device_offline", function(data)
     Logger:warn("Licznik " .. data.device .. " (unit " .. data.unit .. ") milczy")
 end)
 ```
+
+Każde zdarzenie niesie `gateway` z identyfikatorem bramki, więc przy kilku
+bramkach wiesz, której dotyczy.
 
 ## Rozwiązywanie problemów
 
