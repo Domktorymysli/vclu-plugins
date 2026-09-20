@@ -1,0 +1,63 @@
+{
+  "id": "solax",
+  "name": "SolaX Inverter",
+  "version": "1.0.0",
+  "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html, bez chmury)",
+  "author": "tytus",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer"]
+  },
+
+  "config": {
+    "host": {
+      "type": "string",
+      "required": true,
+      "default": "http://192.168.0.132",
+      "description": "Adres dongla WiFi falownika (LSW-3), np. http://192.168.0.132"
+    },
+    "user": {
+      "type": "string",
+      "default": "admin",
+      "description": "Login do panelu dongla (domyślnie admin)"
+    },
+    "pass": {
+      "type": "string",
+      "default": "admin",
+      "secret": true,
+      "description": "Hasło do panelu dongla (domyślnie admin)"
+    },
+    "interval": {
+      "type": "number",
+      "default": 30,
+      "min": 10,
+      "max": 3600,
+      "description": "Interwał odczytu w sekundach"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "inverter": {
+        "type": "SolaxInverterData",
+        "description": "Aktualne dane falownika (moc, produkcja, SN, firmware)"
+      }
+    },
+    "sensors": [
+      { "id": "power",  "type": "number", "unit": "W",   "description": "Moc AC chwilowa" },
+      { "id": "today",  "type": "number", "unit": "kWh", "description": "Produkcja dziś" },
+      { "id": "total",  "type": "number", "unit": "kWh", "description": "Produkcja łącznie" },
+      { "id": "online", "type": "binary_sensor", "description": "Status odczytu (0/1)" }
+    ],
+    "events": [
+      { "name": "solax:updated", "description": "Dane zostały zaktualizowane" },
+      { "name": "solax:error", "description": "Błąd komunikacji z donglem" }
+    ]
+  }
+}

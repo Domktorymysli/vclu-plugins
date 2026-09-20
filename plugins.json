@@ -139,6 +139,26 @@
       "tag": "supla-power-meter-v2.1.0"
     },
     {
+      "id": "solax",
+      "name": "SolaX Inverter",
+      "version": "1.0.0",
+      "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html)",
+      "author": "tytus",
+      "path": "plugins/solax",
+      "tags": [
+        "energy",
+        "photovoltaic",
+        "solar",
+        "inverter",
+        "solax",
+        "solarman"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      },
+      "tag": "solax-v1.0.0"
+    },
+    {
       "id": "modbus-gateway",
       "name": "Modbus Gateway",
       "version": "1.0.0",
