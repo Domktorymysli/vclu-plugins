@@ -4,7 +4,7 @@
     Fabryka obiektów do sterowania urządzeniami Tasmota przez HTTP.
 
     Użycie:
-        local tasmota = Plugin.get("@vclu/tasmota-switch")
+        local tasmota = Plugin.instances["@vclu/tasmota-switch"]
 
         local lamp = tasmota:create({
             ip = "192.168.1.100",
@@ -25,7 +25,7 @@
 
 local plugin = Plugin:new("tasmota-switch", {
     name = "Tasmota Switch",
-    version = "1.0.0",
+    version = "1.0.1",
     description = "Factory for Tasmota switch objects"
 })
 
@@ -33,8 +33,9 @@ local plugin = Plugin:new("tasmota-switch", {
 -- TASMOTA DEVICE CLASS
 --------------------------------------------------------------------------------
 
+-- Method table copied onto each instance. The plugin sandbox exposes no
+-- setmetatable, so inheritance through __index is not available here.
 local TasmotaSwitch = {}
-TasmotaSwitch.__index = TasmotaSwitch
 
 function TasmotaSwitch:new(options)
     local obj = {
@@ -52,7 +53,7 @@ function TasmotaSwitch:new(options)
         _pollInterval = options.pollInterval or 30,
         _poller = nil
     }
-    setmetatable(obj, self)
+    for name, fn in pairs(TasmotaSwitch) do obj[name] = fn end
 
     -- Start polling if enabled
     if obj._polling and obj._ip then

@@ -5,7 +5,7 @@ Fabryka obiektów do sterowania urządzeniami Tasmota (Sonoff, Shelly, etc.) prz
 ## Użycie
 
 ```lua
-local tasmota = Plugin.get("@vclu/tasmota-switch")
+local tasmota = Plugin.instances["@vclu/tasmota-switch"]
 
 -- Tworzenie urządzeń
 local lamp1 = tasmota:create({ ip = "192.168.1.100", name = "Lampka Biurko" })
@@ -33,7 +33,7 @@ end)
 ## Expose do Home Assistant / HomeKit
 
 ```lua
-local tasmota = Plugin.get("@vclu/tasmota-switch")
+local tasmota = Plugin.instances["@vclu/tasmota-switch"]
 
 local lamp = tasmota:create({ ip = "192.168.1.100", name = "Lampka Biurko" })
 
