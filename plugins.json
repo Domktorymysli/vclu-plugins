@@ -137,6 +137,67 @@
         "vclu": ">=1.0.0"
       },
       "tag": "supla-power-meter-v2.1.0"
+    },
+    {
+      "id": "solax",
+      "name": "SolaX Inverter",
+      "version": "1.0.0",
+      "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html)",
+      "author": "tytus",
+      "path": "plugins/solax",
+      "tags": [
+        "energy",
+        "photovoltaic",
+        "solar",
+        "inverter",
+        "solax",
+        "solarman"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      },
+      "tag": "solax-v1.0.0"
+    },
+    {
+      "id": "modbus-gateway",
+      "name": "Modbus Gateway",
+      "version": "1.0.0",
+      "description": "Odczyt urządzeń Modbus RTU przez bramkę RS485-Ethernet (Waveshare, USR, Elfin) po Modbus TCP",
+      "author": "tytus",
+      "path": "plugins/modbus-gateway",
+      "tags": [
+        "modbus",
+        "rs485",
+        "energy",
+        "meter",
+        "gateway",
+        "waveshare",
+        "sdm120"
+      ],
+      "requires": {
+        "vclu": ">=1.1.0"
+      },
+      "tag": "modbus-gateway-v1.0.0"
+    },
+    {
+      "id": "frigate",
+      "name": "Frigate NVR",
+      "version": "2.0.0",
+      "description": "Integracja z Frigate NVR - detekcja obiektow, statusy kamer, eventy",
+      "author": "vCLU",
+      "path": "plugins/frigate",
+      "tags": [
+        "nvr",
+        "camera",
+        "frigate",
+        "detection",
+        "security",
+        "video"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      },
+      "tag": "frigate-v2.0.0"
     }
   ]
 }

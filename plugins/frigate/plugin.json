@@ -1,0 +1,83 @@
+{
+  "id": "frigate",
+  "name": "Frigate NVR",
+  "version": "2.0.0",
+  "description": "Integracja z Frigate NVR - detekcja obiektow, statusy kamer, eventy",
+  "author": "vCLU",
+  "license": "MIT",
+
+  "docs": [
+    { "title": "Documentation", "file": "README.md" }
+  ],
+
+  "requires": {
+    "vclu": ">=1.0.0",
+    "modules": ["http", "timer", "json"]
+  },
+
+  "config": {
+    "host": {
+      "type": "string",
+      "required": true,
+      "description": "Adres Frigate (np. 192.168.0.50)"
+    },
+    "port": {
+      "type": "number",
+      "default": 5000,
+      "min": 1,
+      "max": 65535,
+      "description": "Port API Frigate"
+    },
+    "mode": {
+      "type": "string",
+      "default": "polling",
+      "enum": ["polling", "mqtt"],
+      "description": "Tryb odbioru eventow: polling (HTTP) lub mqtt (real-time)"
+    },
+    "interval": {
+      "type": "number",
+      "default": 30,
+      "min": 5,
+      "max": 3600,
+      "description": "Interwal odpytywania statusu kamer (sekundy)"
+    },
+    "eventInterval": {
+      "type": "number",
+      "default": 10,
+      "min": 3,
+      "max": 300,
+      "description": "Interwal sprawdzania nowych eventow (sekundy, tylko tryb polling)"
+    },
+    "mqttPrefix": {
+      "type": "string",
+      "default": "frigate",
+      "description": "MQTT topic prefix Frigate (tylko tryb mqtt)"
+    },
+    "cameras": {
+      "type": "string",
+      "default": "",
+      "description": "Lista kamer (oddzielone przecinkiem, puste = wszystkie)"
+    }
+  },
+
+  "exports": {
+    "objects": {
+      "stats": {
+        "type": "FrigateStats",
+        "description": "Status wszystkich kamer i detektorow"
+      }
+    },
+    "sensors": [
+      { "id": "cameraCount", "type": "number", "description": "Liczba aktywnych kamer" },
+      { "id": "totalDetections", "type": "number", "description": "Laczna liczba detekcji od startu" }
+    ],
+    "controls": [
+      { "id": "detection", "type": "boolean", "description": "Globalne wlaczenie/wylaczenie detekcji" }
+    ],
+    "events": [
+      { "name": "frigate:detection", "description": "Nowa detekcja obiektu (person, car, ...)" },
+      { "name": "frigate:updated", "description": "Dane zostaly zaktualizowane" },
+      { "name": "frigate:error", "description": "Blad komunikacji z Frigate" }
+    ]
+  }
+}
