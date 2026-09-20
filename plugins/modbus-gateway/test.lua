@@ -114,6 +114,17 @@ check("values reached the device state", garaz:getValue("pralnia", "voltage") ~=
 check("gateway reports online", garaz:isOnline() == true)
 
 --------------------------------------------------------------------------------
+-- SANDBOX CONSTRAINTS
+--
+-- The plugin sandbox exposes a named allowlist of globals and setmetatable is
+-- not on it, so a metatable-based class silently breaks at load time on a real
+-- runtime while passing every test here.
+--------------------------------------------------------------------------------
+
+local src = io.open(here .. "/init.lua"):read("a")
+check("plugin does not call setmetatable", src:find("setmetatable%s*%(") == nil)
+
+--------------------------------------------------------------------------------
 -- CLEANUP
 --------------------------------------------------------------------------------
 
