@@ -1,8 +1,8 @@
 {
   "id": "modbus-gateway",
   "name": "Modbus Gateway",
-  "version": "1.0.0",
-  "description": "Odczyt urządzeń Modbus RTU przez bramkę RS485-Ethernet (Waveshare RS485 TO ETH, USR, Elfin) po Modbus TCP",
+  "version": "2.0.0",
+  "description": "Fabryka bramek Modbus RTU po RS485-Ethernet (Waveshare RS485 TO ETH, USR, Elfin). Bramki deklarujesz w kodzie przez create(), wiec jedno vCLU obsluguje ich dowolnie wiele.",
   "author": "tytus",
   "license": "MIT",
   "docs": [
@@ -19,71 +19,53 @@
       "json"
     ]
   },
-  "config": {
-    "host": {
-      "type": "string",
-      "required": true,
-      "default": "192.168.0.9",
-      "description": "Adres IP bramki RS485-Ethernet"
+  "factory": {
+    "method": "create",
+    "description": "Tworzy bramke. Wolaj raz na kazdy fizyczny mostek RS485-Ethernet.",
+    "options": {
+      "id": "Identyfikator bramki, domyslnie gw1, gw2... Daje sensor gateway_<id>_online.",
+      "host": "Adres IP bramki, wymagany.",
+      "port": "Port TCP bramki, domyslnie 502. Waveshare fabrycznie 4196.",
+      "interval": "Interwal odczytu w sekundach, domyslnie 30.",
+      "timeout": "Timeout pojedynczej transakcji w ms, domyslnie 2000.",
+      "devices": "Lista urzadzen. Wpis to sam adres Modbus albo obiekt { id, unit, name, profile, registers, fc }. Wymagany jest tylko unit 1-247.",
+      "autostart": "Czy od razu wystartowac poller, domyslnie true."
     },
-    "port": {
-      "type": "number",
-      "default": 502,
-      "min": 1,
-      "max": 65535,
-      "description": "Port TCP bramki (Waveshare domyślnie 4196, standard Modbus TCP to 502)"
-    },
-    "interval": {
-      "type": "number",
-      "default": 30,
-      "min": 5,
-      "max": 3600,
-      "description": "Interwał odczytu w sekundach"
-    },
-    "timeout": {
-      "type": "number",
-      "default": 2000,
-      "min": 200,
-      "max": 10000,
-      "description": "Timeout pojedynczej transakcji Modbus w ms"
-    },
-    "devices": {
-      "type": "array",
-      "required": true,
-      "description": "Lista urządzeń na magistrali. Wpis to sam adres Modbus (np. 2) albo obiekt { id, unit, name, profile }. Wymagany jest tylko unit (1-247); id domyślnie meter<unit>, profile domyślnie sdm120. Profile: sdm120, sdm220, sdm230. Zamiast profilu można podać własną mapę w polu registers.",
-      "default": [
-        1
-      ]
-    }
+    "example": "local modbus = Plugin.get(\"@vclu/modbus-gateway\")\nlocal garaz = modbus:create({\n  id = \"garaz\", host = \"192.168.0.9\", port = 4196,\n  devices = { { id = \"pralka\", unit = 3, name = \"Pralka\" } }\n})\nexpose(garaz:get(\"pralka_power\"), \"number\", { name = \"Pralka moc\", unit = \"W\" })"
+  },
+  "profiles": {
+    "sdm120": "Eastron SDM120 / VCX SDM120M",
+    "sdm220": "Eastron SDM220",
+    "sdm230": "Eastron SDM230"
   },
   "exports": {
     "objects": {
-      "gateway": {
-        "type": "ModbusGatewayData",
-        "description": "Stan bramki (host, port, liczba urządzeń, ostatni odczyt)"
+      "gateways": {
+        "type": "ModbusGatewayMap",
+        "description": "Stan kazdej utworzonej bramki (host, port, liczba urzadzen, ostatni odczyt)"
       },
       "devices": {
         "type": "ModbusDeviceMap",
-        "description": "Stan i odczyty każdego skonfigurowanego urządzenia"
+        "description": "Stan i odczyty kazdego urzadzenia, plaska mapa po id urzadzenia"
       }
     },
     "sensors": [
       {
-        "id": "online",
+        "id": "gateway_<gateway>_online",
         "type": "binary_sensor",
-        "description": "Czy którekolwiek urządzenie odpowiedziało"
+        "description": "Czy ktorekolwiek urzadzenie tej bramki odpowiedzialo"
       },
       {
         "id": "<device>_voltage",
         "type": "number",
         "unit": "V",
-        "description": "Napięcie"
+        "description": "Napiecie"
       },
       {
         "id": "<device>_current",
         "type": "number",
         "unit": "A",
-        "description": "Prąd"
+        "description": "Prad"
       },
       {
         "id": "<device>_power",
@@ -106,13 +88,13 @@
       {
         "id": "<device>_pf",
         "type": "number",
-        "description": "Współczynnik mocy"
+        "description": "Wspolczynnik mocy"
       },
       {
         "id": "<device>_frequency",
         "type": "number",
         "unit": "Hz",
-        "description": "Częstotliwość sieci"
+        "description": "Czestotliwosc sieci"
       },
       {
         "id": "<device>_energy",
@@ -130,26 +112,26 @@
         "id": "<device>_total",
         "type": "number",
         "unit": "kWh",
-        "description": "Energia łącznie"
+        "description": "Energia lacznie"
       },
       {
         "id": "<device>_online",
         "type": "binary_sensor",
-        "description": "Czy urządzenie odpowiada"
+        "description": "Czy urzadzenie odpowiada"
       }
     ],
     "events": [
       {
         "name": "modbus:updated",
-        "description": "Cykl odczytu zakończony powodzeniem"
+        "description": "Cykl odczytu bramki zakonczony powodzeniem"
       },
       {
         "name": "modbus:error",
-        "description": "Żadne urządzenie nie odpowiedziało"
+        "description": "Zadne urzadzenie bramki nie odpowiedzialo"
       },
       {
         "name": "modbus:device_offline",
-        "description": "Urządzenie przestało odpowiadać"
+        "description": "Urzadzenie przestalo odpowiadac"
       }
     ]
   }
