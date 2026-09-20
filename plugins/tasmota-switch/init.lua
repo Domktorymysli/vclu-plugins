@@ -4,7 +4,7 @@
     Fabryka obiektów do sterowania urządzeniami Tasmota przez HTTP.
 
     Użycie:
-        local tasmota = Plugin.instances["@vclu/tasmota-switch"]
+        local tasmota = Plugin.getPlugin("@vclu/tasmota-switch")
 
         local lamp = tasmota:create({
             ip = "192.168.1.100",

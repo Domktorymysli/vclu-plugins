@@ -14,7 +14,7 @@
 -- gateway with its own poller and its own socket to the Go side.
 --
 -- ```lua
--- local modbus = Plugin.instances["@vclu/modbus-gateway"]
+-- local modbus = Plugin.getPlugin("@vclu/modbus-gateway")
 --
 -- local garaz = modbus:create({
 --     id = "garaz",
@@ -61,7 +61,7 @@
 
 local plugin = Plugin:new("modbus-gateway", {
     name = "Modbus Gateway",
-    version = "2.0.2",
+    version = "2.0.3",
     description = "Fabryka bramek Modbus RTU po RS485-Ethernet (Modbus TCP)"
 })
 

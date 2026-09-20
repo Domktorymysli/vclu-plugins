@@ -40,7 +40,7 @@
 
 local plugin = Plugin:new("influx-metrics", {
     name = "InfluxDB Metrics",
-    version = "1.1.0",
+    version = "1.1.1",
     description = "Send metrics to InfluxDB/Telegraf/VictoriaMetrics"
 })
 
@@ -49,7 +49,8 @@ local plugin = Plugin:new("influx-metrics", {
 --------------------------------------------------------------------------------
 
 local MetricCollector = {}
-MetricCollector.__index = MetricCollector
+-- Method table copied onto each instance. The plugin sandbox exposes no
+-- setmetatable, so inheritance through __index is not available here.
 
 --- Create new metric collector
 -- @param config table Configuration
@@ -77,7 +78,7 @@ function MetricCollector:new(config)
             lastError = nil
         }
     }
-    setmetatable(c, self)
+    for name, fn in pairs(MetricCollector) do c[name] = fn end
 
     -- Start flush timer
     if c.interval > 0 then

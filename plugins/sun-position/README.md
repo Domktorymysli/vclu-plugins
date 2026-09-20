@@ -60,7 +60,7 @@ Możesz ustawić offset dla eventów wschodu/zachodu:
 ## API
 
 ```lua
-local sun = Plugin.get("@vclu/sun-position")
+local sun = Plugin.getPlugin("@vclu/sun-position")
 
 -- Czasy słońca (format HH:MM)
 sun:getSunrise()         -- "06:45"
@@ -133,7 +133,7 @@ Plugin tworzy obiekty:
 ```lua
 -- Każda fasada reaguje tylko gdy słońce na nią świeci
 plugin:on("sun:position", function(data)
-    local sun = Plugin.get("@vclu/sun-position")
+    local sun = Plugin.getPlugin("@vclu/sun-position")
 
     -- Fasada wschodnia (45° - 135°)
     if sun:isAzimuthBetween(45, 135) and sun:isElevationAbove(10) then
@@ -156,7 +156,7 @@ end)
 
 ```lua
 plugin:on("sun:position", function(data)
-    local sun = Plugin.get("@vclu/sun-position")
+    local sun = Plugin.getPlugin("@vclu/sun-position")
 
     if sun:isTwilight() then
         -- Zmierzch - włącz oświetlenie zewnętrzne
@@ -178,11 +178,11 @@ plugin:on("sun:rise", function(data)
     -- Stopniowo otwieraj rolety
     Rolety:execute("setPosition", 20)
 
-    Plugin.get("@vclu/sun-position"):setTimeout(10 * 60 * 1000, function()
+    Plugin.getPlugin("@vclu/sun-position"):setTimeout(10 * 60 * 1000, function()
         Rolety:execute("setPosition", 50)
     end)
 
-    Plugin.get("@vclu/sun-position"):setTimeout(20 * 60 * 1000, function()
+    Plugin.getPlugin("@vclu/sun-position"):setTimeout(20 * 60 * 1000, function()
         Rolety:execute("open")
     end)
 end)
@@ -191,7 +191,7 @@ end)
 ### Wyświetlanie na panelu
 
 ```lua
-local sun = Plugin.get("@vclu/sun-position")
+local sun = Plugin.getPlugin("@vclu/sun-position")
 
 Panel.sunrise:setValue(sun:getSunrise())
 Panel.sunset:setValue(sun:getSunset())
@@ -204,7 +204,7 @@ Panel.moonPhase:setValue(sun:getMoonPhaseName())
 Plugin udostępnia tylko gettery, więc trzeba je opakować w obiekt exposable i podłączyć eventy:
 
 ```lua
-local sun = Plugin.get("@vclu/sun-position")
+local sun = Plugin.getPlugin("@vclu/sun-position")
 
 -- Helper do opakowania gettera z eventami
 -- epsilon: opcjonalna tolerancja dla floatów (debounce)
@@ -264,7 +264,7 @@ end)
 ### Krótsza wersja (jeden obiekt, wiele wartości)
 
 ```lua
-local sun = Plugin.get("@vclu/sun-position")
+local sun = Plugin.getPlugin("@vclu/sun-position")
 
 -- Osobne obiekty dla każdej wartości
 local sensors = {

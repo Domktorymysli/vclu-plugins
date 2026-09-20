@@ -6,7 +6,7 @@
 -- ## Expose API Usage
 --
 -- ```lua
--- local supla = Plugin.get("@vclu/supla-power-meter")
+-- local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 --
 -- -- Moc całkowita (W)
 -- expose(supla:get("power"), "number", {

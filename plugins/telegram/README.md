@@ -37,7 +37,7 @@ Powiadomienia przez Telegram Bot API.
 ## API
 
 ```lua
-local tg = Plugin.get("@vclu/telegram")
+local tg = Plugin.getPlugin("@vclu/telegram")
 
 -- Podstawowe wysyłanie
 tg:send("Hello World!")
@@ -94,7 +94,7 @@ tg:send("`Kod`", { parseMode = "Markdown" })
 
 ```lua
 plugin:on("alarm:triggered", function(data)
-    local tg = Plugin.get("@vclu/telegram")
+    local tg = Plugin.getPlugin("@vclu/telegram")
     tg:alert("ALARM!", string.format(
         "Wykryto ruch w strefie: %s\nCzas: %s",
         data.zone,
@@ -107,7 +107,7 @@ end)
 
 ```lua
 plugin:on("salda:error", function(data)
-    local tg = Plugin.get("@vclu/telegram")
+    local tg = Plugin.getPlugin("@vclu/telegram")
     tg:error("Rekuperator: " .. data.error)
 end)
 ```
@@ -116,8 +116,8 @@ end)
 
 ```lua
 plugin:on("sun:rise", function(data)
-    local tg = Plugin.get("@vclu/telegram")
-    local weather = Plugin.get("@vclu/weather")
+    local tg = Plugin.getPlugin("@vclu/telegram")
+    local weather = Plugin.getPlugin("@vclu/weather")
 
     local temp = weather and weather:getTemperature() or "?"
 
@@ -134,8 +134,8 @@ end)
 -- Codziennie o 22:00
 plugin:on("time:hourChanged", function(data)
     if data.hour == 22 then
-        local tg = Plugin.get("@vclu/telegram")
-        local sun = Plugin.get("@vclu/sun-position")
+        local tg = Plugin.getPlugin("@vclu/telegram")
+        local sun = Plugin.getPlugin("@vclu/sun-position")
 
         tg:send(string.format([[
 <b>Podsumowanie dnia</b>
@@ -161,11 +161,11 @@ end)
 ```lua
 -- Gdy nikt nie ma być w domu
 plugin:on("door:opened", function(data)
-    local time = Plugin.get("@vclu/time-sync")
+    local time = Plugin.getPlugin("@vclu/time-sync")
 
     -- Tylko w godzinach pracy
     if time:isWeekday() and time:isBetween(8, 0, 16, 0) then
-        local tg = Plugin.get("@vclu/telegram")
+        local tg = Plugin.getPlugin("@vclu/telegram")
         tg:alert("Drzwi otwarte!", string.format(
             "Drzwi %s otwarte o %s",
             data.name,
@@ -178,7 +178,7 @@ end)
 ## Wysyłanie do wielu odbiorców
 
 ```lua
-local tg = Plugin.get("@vclu/telegram")
+local tg = Plugin.getPlugin("@vclu/telegram")
 
 -- Wysyłka do konkretnego chatu
 tg:send("Wiadomość", { chatId = "987654321" })
@@ -208,7 +208,7 @@ Dla kanału:
 ## Statystyki
 
 ```lua
-local tg = Plugin.get("@vclu/telegram")
+local tg = Plugin.getPlugin("@vclu/telegram")
 local stats = tg:getStats()
 
 print("Wysłano: " .. stats.messagesSent)

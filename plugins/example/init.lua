@@ -321,7 +321,7 @@ end)
 -- PRZYKŁAD: Dostęp do innych pluginów (bez zmian)
 --------------------------------------------------------------------------------
 --[[
-local weather = Plugin.get("@vclu/weather")
+local weather = Plugin.getPlugin("@vclu/weather")
 if weather then
     local temp = weather:getTemperature()
     plugin:log("info", "Weather temp: " .. tostring(temp))
@@ -340,7 +340,7 @@ end
 --[[
 -- W user.lua użytkownik może eksponować sensory/kontrolki pluginu:
 
-local example = Plugin.get("@vclu/example")
+local example = Plugin.getPlugin("@vclu/example")
 
 -- Eksponuj sensor jako number
 expose(example:get("value"), "number", {

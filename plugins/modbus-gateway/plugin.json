@@ -1,7 +1,7 @@
 {
   "id": "modbus-gateway",
   "name": "Modbus Gateway",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Fabryka bramek Modbus RTU po RS485-Ethernet (Waveshare RS485 TO ETH, USR, Elfin). Bramki deklarujesz w kodzie przez create(), wiec jedno vCLU obsluguje ich dowolnie wiele.",
   "author": "tytus",
   "license": "MIT",
@@ -31,7 +31,7 @@
       "devices": "Lista urzadzen. Wpis to sam adres Modbus albo obiekt { id, unit, name, profile, registers, fc }. Wymagany jest tylko unit 1-247.",
       "autostart": "Czy od razu wystartowac poller, domyslnie true."
     },
-    "example": "local modbus = Plugin.instances[\"@vclu/modbus-gateway\"]\nlocal garaz = modbus:create({\n  id = \"garaz\", host = \"192.168.0.9\", port = 4196,\n  devices = { { id = \"pralka\", unit = 3, name = \"Pralka\" } }\n})\nexpose(garaz:get(\"pralka_power\"), \"number\", { name = \"Pralka moc\", unit = \"W\" })"
+    "example": "local modbus = Plugin.getPlugin(\"@vclu/modbus-gateway\")\nlocal garaz = modbus:create({\n  id = \"garaz\", host = \"192.168.0.9\", port = 4196,\n  devices = { { id = \"pralka\", unit = 3, name = \"Pralka\" } }\n})\nexpose(garaz:get(\"pralka_power\"), \"number\", { name = \"Pralka moc\", unit = \"W\" })"
   },
   "profiles": {
     "sdm120": "Eastron SDM120 / VCX SDM120M",

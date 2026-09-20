@@ -20,7 +20,7 @@ curl -X POST 'http://localhost:8086/query' --data-urlencode 'q=CREATE DATABASE v
 W pliku `user_script.lua`:
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
 
 local m = metrics:create({
     url = "http://localhost:8086/write?db=vclu",
@@ -61,7 +61,7 @@ Otwórz Grafanę na `http://localhost:3000` (admin/admin) i twórz dashboardy.
 ### Podstawowe
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
 
 -- Utwórz collector
 local m = metrics:create({
@@ -251,7 +251,7 @@ metrics:remove("main")
 ### Metryki z sensorów Grenton
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
 local m = metrics:create({
     url = "http://influxdb:8086/write?db=grenton",
     interval = 60,
@@ -277,8 +277,8 @@ end)
 ### Metryki z pluginu Supla
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
-local supla = Plugin.get("@vclu/supla-power-meter")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
+local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 
 local m = metrics:create({
     url = "http://influxdb:8086/write?db=energy",
@@ -301,8 +301,8 @@ end)
 ### Metryki z rekuperatora
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
-local salda = Plugin.get("@vclu/salda-recuperator")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
+local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
 local m = metrics:create({
     url = "http://influxdb:8086/write?db=hvac",
@@ -324,7 +324,7 @@ end)
 ### Wiele baz danych
 
 ```lua
-local metrics = Plugin.get("@vclu/influx-metrics")
+local metrics = Plugin.getPlugin("@vclu/influx-metrics")
 
 -- Główna baza - wszystkie metryki
 local main = metrics:create({

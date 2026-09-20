@@ -6,7 +6,7 @@
 -- ## Expose API Usage
 --
 -- ```lua
--- local salda = Plugin.get("@vclu/salda-recuperator")
+-- local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 --
 -- -- Fan speed control (0-4 levels)
 -- expose(salda:get("fanSpeed"), "fan", {

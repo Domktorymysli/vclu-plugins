@@ -33,7 +33,7 @@ Integracja z [Frigate NVR](https://frigate.video/) - monitorowanie kamer, detekc
 ## Expose API
 
 ```lua
-local frigate = Plugin.get("@vclu/frigate")
+local frigate = Plugin.getPlugin("@vclu/frigate")
 
 -- Detekcja wl/wyl (global)
 expose(frigate:get("detection"), "boolean", {
@@ -80,7 +80,7 @@ Emitowany przy bledzie komunikacji.
 ## Public API
 
 ```lua
-local frigate = Plugin.get("@vclu/frigate")
+local frigate = Plugin.getPlugin("@vclu/frigate")
 
 frigate:isReady()              -- bool
 frigate:getVersion()           -- "0.14.1"
@@ -105,8 +105,8 @@ frigate:getStats()  -- statystyki pollerow
 ## Przyklad: powiadomienie Telegram przy detekcji osoby
 
 ```lua
-local frigate = Plugin.get("@vclu/frigate")
-local telegram = Plugin.get("@vclu/telegram")
+local frigate = Plugin.getPlugin("@vclu/frigate")
+local telegram = Plugin.getPlugin("@vclu/telegram")
 
 frigate:on("frigate:detection", function(data)
     if data.label == "person" and data.score > 0.7 then

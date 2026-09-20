@@ -14,7 +14,7 @@ Integracja z rekuperatorem Salda - odczyt danych i sterowanie z pełnym wsparcie
 ## API
 
 ```lua
-local salda = Plugin.get("@vclu/salda-recuperator")
+local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
 -- Temperatury (°C)
 salda:getSupplyAir()      -- Temperatura nawiewu
@@ -95,7 +95,7 @@ Plugin udostępnia sensory i kontrolki przez `plugin:get()`:
 ### Przykład - pełne expose
 
 ```lua
-local salda = Plugin.get("@vclu/salda-recuperator")
+local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
 -- Wentylator jako fan (typ fan w HA)
 expose(salda:get("fanSpeed"), "fan", {
@@ -128,7 +128,7 @@ expose(salda:get("humidity"), "humidity", { name = "Wilgotność", area = "Techn
 ### Expose - tylko najważniejsze
 
 ```lua
-local salda = Plugin.get("@vclu/salda-recuperator")
+local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
 -- Tylko wentylator i temperatura zewnętrzna
 expose(salda:get("fanSpeed"), "fan", {
@@ -161,7 +161,7 @@ Wszystkie encje automatycznie w pokoju "Techniczny" (dzięki `area`).
 
 ```lua
 plugin:on("salda:updated", function(data)
-    local salda = Plugin.get("@vclu/salda-recuperator")
+    local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
     -- Zwiększ wentylator gdy wilgotność > 60%
     if data.humidity > 0.6 and data.fanSpeed < 3 then
@@ -179,7 +179,7 @@ end)
 
 ```lua
 plugin:on("weather:changed", function(weather)
-    local salda = Plugin.get("@vclu/salda-recuperator")
+    local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
     -- Gdy na zewnątrz zimno, zwiększ temperaturę nawiewu
     if weather.temp < 0 then
@@ -196,7 +196,7 @@ end)
 
 ```lua
 -- W skrypcie Grenton
-local salda = Plugin.get("@vclu/salda-recuperator")
+local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
 -- Ustaw wartości na panelu
 Panel.tempNawiew:setValue(salda:getSupplyAir())

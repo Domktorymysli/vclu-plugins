@@ -36,7 +36,7 @@ Pełna lista: [IANA Time Zones](https://en.wikipedia.org/wiki/List_of_tz_databas
 ## API
 
 ```lua
-local time = Plugin.get("@vclu/time-sync")
+local time = Plugin.getPlugin("@vclu/time-sync")
 
 -- Aktualny czas (tyka jak zegar)
 time:getTimestamp()      -- Unix timestamp
@@ -108,7 +108,7 @@ Plugin tworzy obiekt `plugins.vclu.time-sync.current`:
 
 ```lua
 plugin:on("time:hourChanged", function(data)
-    local time = Plugin.get("@vclu/time-sync")
+    local time = Plugin.getPlugin("@vclu/time-sync")
 
     -- Włącz światła o 18:00 w dni robocze
     if data.hour == 18 and time:isWeekday() then
@@ -125,7 +125,7 @@ end)
 ### Sprawdzanie zakresu czasu
 
 ```lua
-local time = Plugin.get("@vclu/time-sync")
+local time = Plugin.getPlugin("@vclu/time-sync")
 
 -- Czy jest noc (22:00 - 06:00)?
 if time:isBetween(22, 0, 6, 0) then
