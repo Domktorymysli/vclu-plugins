@@ -11,7 +11,7 @@
 -- ## Expose API Usage (in user.lua)
 --
 -- ```lua
--- local solax = Plugin.get("@vclu/solax")
+-- local solax = Plugin.getPlugin("@vclu/solax")
 --
 -- expose(solax:get("power"), "number", { name = "Falownik moc", area = "Fotowoltaika", unit = "W" })
 -- expose(solax:get("today"), "number", { name = "Produkcja dziś", area = "Fotowoltaika", unit = "kWh" })

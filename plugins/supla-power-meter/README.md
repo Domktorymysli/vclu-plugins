@@ -40,7 +40,7 @@ Format URL: `https://svrXX.supla.org/direct/{id}/{token}/read`
 ### Odczyt danych
 
 ```lua
-local supla = Plugin.get("supla-power-meter")
+local supla = Plugin.getPlugin("supla-power-meter")
 
 -- Podstawowe odczyty
 local power = supla:getTotalPower()      -- Moc całkowita [W]
@@ -141,7 +141,7 @@ Plugin udostępnia sensory przez `plugin:get()`:
 ### Przykład - expose do HA
 
 ```lua
-local supla = Plugin.get("@vclu/supla-power-meter")
+local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 
 -- Moc całkowita
 expose(supla:get("power"), "number", {
@@ -176,7 +176,7 @@ expose(supla:get("frequency"), "number", { name = "Częstotliwość", area = "Te
 ### Expose - tylko podstawowe
 
 ```lua
-local supla = Plugin.get("@vclu/supla-power-meter")
+local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 
 -- Tylko moc i energia
 expose(supla:get("power"), "number", { name = "Moc", area = "Techniczny", unit = "W" })
@@ -201,7 +201,7 @@ EventBus:subscribe("supla:updated", function(data)
     -- Alarm przy wysokim zużyciu
     if data.totalPower > 10000 then
         -- Wyślij powiadomienie
-        local telegram = Plugin.get("telegram")
+        local telegram = Plugin.getPlugin("telegram")
         if telegram then
             telegram:send("Wysokie zużycie energii: " .. data.totalPower .. "W")
         end
@@ -213,7 +213,7 @@ end)
 
 ```lua
 -- Sprawdź czy oddajemy energię do sieci
-local supla = Plugin.get("supla-power-meter")
+local supla = Plugin.getPlugin("supla-power-meter")
 local power = supla:getTotalPower()
 
 if power < 0 then
@@ -226,7 +226,7 @@ end
 ### Bilans energii
 
 ```lua
-local supla = Plugin.get("supla-power-meter")
+local supla = Plugin.getPlugin("supla-power-meter")
 local consumed = supla:getTotalEnergy()
 local exported = supla:getReverseEnergy()
 local balance = consumed - exported
@@ -277,7 +277,7 @@ print(string.format(
 
 1. Sprawdź czy Direct Link jest aktywny w Supla Cloud
 2. Sprawdź czy URL jest poprawny (format JSON)
-3. Sprawdź logi: `Plugin.get("supla-power-meter"):getError()`
+3. Sprawdź logi: `Plugin.getPlugin("supla-power-meter"):getError()`
 
 ### Błąd HTTP 401
 

@@ -7,7 +7,7 @@
 -- ## Expose API Usage
 --
 -- ```lua
--- local frigate = Plugin.get("@vclu/frigate")
+-- local frigate = Plugin.getPlugin("@vclu/frigate")
 --
 -- -- Detection on/off (global)
 -- expose(frigate:get("detection"), "boolean", {

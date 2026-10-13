@@ -22,10 +22,14 @@ energii **VCX SDM120M**.
 ## Deklaracja bramki
 
 Plugin nie ma sekcji konfiguracji w panelu. Bramkę tworzysz w module albo
-w `user.lua`, tam gdzie i tak piszesz resztę logiki:
+w `user.lua`, tam gdzie i tak piszesz resztę logiki.
+
+Instancję wtyczki bierzesz przez `Plugin.getPlugin(...)`, nie przez
+`Plugin.get(...)`. To drugie to metoda instancji zwracająca sensor, więc
+wywołana statycznie oddaje `nil`. Krótkie id też zadziała.
 
 ```lua
-local modbus = Plugin.get("@vclu/modbus-gateway")
+local modbus = Plugin.getPlugin("@vclu/modbus-gateway")
 
 local garaz = modbus:create({
     id       = "garaz",

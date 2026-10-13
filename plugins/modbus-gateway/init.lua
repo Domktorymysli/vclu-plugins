@@ -14,7 +14,7 @@
 -- gateway with its own poller and its own socket to the Go side.
 --
 -- ```lua
--- local modbus = Plugin.get("@vclu/modbus-gateway")
+-- local modbus = Plugin.getPlugin("@vclu/modbus-gateway")
 --
 -- local garaz = modbus:create({
 --     id = "garaz",
@@ -61,7 +61,7 @@
 
 local plugin = Plugin:new("modbus-gateway", {
     name = "Modbus Gateway",
-    version = "2.0.0",
+    version = "2.0.3",
     description = "Fabryka bramek Modbus RTU po RS485-Ethernet (Modbus TCP)"
 })
 
@@ -224,8 +224,9 @@ end
 -- GATEWAY INSTANCE
 --------------------------------------------------------------------------------
 
+-- Method table copied onto each instance. The plugin sandbox exposes no
+-- setmetatable, so inheritance through __index is not available here.
 local Gateway = {}
-Gateway.__index = Gateway
 
 function Gateway:_sensorId(device, fieldId)
     return device.id .. "_" .. fieldId
@@ -555,7 +556,7 @@ function plugin:create(opts)
         return nil, "sensor id taken: " .. gwSensor
     end
 
-    local self = setmetatable({
+    local self = {
         id = id,
         host = host,
         port = plugin:coerceNumber(opts.port, 502),
@@ -564,7 +565,8 @@ function plugin:create(opts)
         devices = {},
         poller = nil,
         state = { ready = false, online = false, lastUpdate = 0, lastError = nil, devices = {} }
-    }, Gateway)
+    }
+    for name, fn in pairs(Gateway) do self[name] = fn end
 
     if type(opts.devices) == "table" then
         for _, entry in ipairs(opts.devices) do
@@ -619,7 +621,7 @@ function plugin:create(opts)
     return self
 end
 
---- Gateway by id, e.g. Plugin.get("@vclu/modbus-gateway"):gateway("garaz")
+--- Gateway by id, e.g. modbus:gateway("garaz")
 function plugin:gateway(id) return byId[id] end
 
 function plugin:getGateways() return gateways end

@@ -58,7 +58,7 @@ plugin:kvList(prefix)
 plugin:kvGetAll()
 
 -- Access other plugins
-local other = Plugin.get("@vclu/weather")
+local other = Plugin.getPlugin("@vclu/weather")
 local all = Plugin.list()
 ```
 
@@ -772,7 +772,7 @@ plugin:kvSet("feature_enabled", true)
 
 ```lua
 -- Get another plugin
-local weather = Plugin.get("@vclu/weather")
+local weather = Plugin.getPlugin("@vclu/weather")
 if weather then
     local temp = weather:getTemperature()
     plugin:log("info", "Temperature: " .. tostring(temp))

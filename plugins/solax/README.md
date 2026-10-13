@@ -48,7 +48,7 @@ parsuje wartości i aktualizuje czujniki. Pola `"---"` (np. nocą, gdy falownik
 ## Wystawienie obiektów (`user.lua`)
 
 ```lua
-local solax = Plugin.get("@vclu/solax")
+local solax = Plugin.getPlugin("@vclu/solax")
 
 expose(solax:get("power"), "number", {
     name = "Falownik — moc AC", area = "Fotowoltaika", unit = "W", min = 0, max = 20000
@@ -70,7 +70,7 @@ Home Assistant (MQTT discovery) z odpowiednią jednostką.
 ## API skryptowe
 
 ```lua
-local solax = Plugin.get("@vclu/solax")
+local solax = Plugin.getPlugin("@vclu/solax")
 
 solax:getPower()    -- moc AC [W]
 solax:getToday()    -- produkcja dziś [kWh]

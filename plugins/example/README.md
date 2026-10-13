@@ -165,7 +165,7 @@ notifySensor("temperature")
 **Użycie w user.lua:**
 
 ```lua
-local myPlugin = Plugin.get("@vclu/moj-plugin")
+local myPlugin = Plugin.getPlugin("@vclu/moj-plugin")
 
 -- Eksponuj sensor
 expose(myPlugin:get("temperature"), "temperature", {
@@ -187,7 +187,7 @@ expose(myPlugin:get("setpoint"), "number", {
 
 ```lua
 -- Pobierz instancję innego pluginu
-local weather = Plugin.get("@vclu/weather")
+local weather = Plugin.getPlugin("@vclu/weather")
 
 if weather then
     local temp = weather:getTemperature()

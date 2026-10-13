@@ -18,11 +18,12 @@ Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua.
 
 ### Dostęp do pluginu
 
-Plugin NIE jest dostępny jako globalna zmienna. Użyj `Plugin.get()`:
+Instancja wtyczki nie jest globalną zmienną. Pobierz ją przez `Plugin.getPlugin()`
+(nie `Plugin.get()`, bo to metoda instancji zwracająca sensor):
 
 ```lua
 -- Pobierz instancję pluginu
-local weather = Plugin.get("@vclu/weather")
+local weather = Plugin.getPlugin("@vclu/weather")
 
 -- Teraz możesz używać metod
 local temp = weather:getTemperature()
@@ -33,7 +34,7 @@ print("Temperatura: " .. temp .. "°C")
 
 ```lua
 function getWeather()
-    local weather = Plugin.get("@vclu/weather")
+    local weather = Plugin.getPlugin("@vclu/weather")
     if not weather then
         return "Plugin weather nie jest załadowany"
     end
@@ -66,7 +67,7 @@ end
 
 ```lua
 function checkRain()
-    local weather = Plugin.get("@vclu/weather")
+    local weather = Plugin.getPlugin("@vclu/weather")
     if not weather then return end
 
     local condition = weather:getCondition()

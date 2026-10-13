@@ -40,7 +40,8 @@ function M.report()
 end
 
 --- Install the fake runtime globals.
--- @param opts table optional { registers = function(reqOpts) -> table }
+-- @param opts table optional { registers = function(reqOpts) -> table,
+--                                http = function(reqOpts) -> response }
 -- @return table recorder with sensors, pollers, objects, emits, log, clobbered
 function M.install(opts)
     opts = opts or {}
@@ -51,8 +52,15 @@ function M.install(opts)
         objects = {},   -- object path -> data
         emits = {},     -- ordered list of { event, data, opts }
         log = {},       -- ordered list of "level: message"
-        clobbered = {}  -- sensor ids registered more than once
+        clobbered = {}, -- sensor ids registered more than once
+        http = {},      -- ordered list of request option tables
+        exposed = {}    -- ordered list of { object, kind, opts } from expose()
     }
+
+    -- HTTP answers with an empty success unless a test says otherwise. The
+    -- runtime hands the parsed payload back as resp.json, with resp.err set
+    -- on failure; the stub keeps that shape.
+    local httpResponder = opts.http or function() return { code = 200, json = {} } end
 
     -- Registers default to zeros; a test can hand back real values instead.
     local registersFor = opts.registers or function(reqOpts)
@@ -124,6 +132,12 @@ function M.install(opts)
 
     function Plugin:get(id) return env.sensors[id] end
 
+    function Plugin:httpRequest(reqOpts, cb)
+        env.http[#env.http + 1] = reqOpts
+        if cb then cb(httpResponder(reqOpts)) end
+        return true
+    end
+
     function Plugin:upsertObject(path, data) env.objects[path] = data end
 
     function Plugin:updateObject(path, patch)
@@ -149,6 +163,15 @@ function M.install(opts)
     function Plugin:onCleanup(cb) self._cleanup = cb end
 
     _G.Plugin = Plugin
+
+    _G.expose = function(object, kind, exposeOpts)
+        env.exposed[#env.exposed + 1] = { object = object, kind = kind, opts = exposeOpts }
+        return object
+    end
+
+    _G.HTTP = {
+        new = function() return { get = function() end, post = function() end } end
+    }
 
     --- Run one poller cycle synchronously.
     function env.tick(name)

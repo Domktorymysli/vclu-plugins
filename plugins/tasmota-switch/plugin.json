@@ -1,7 +1,7 @@
 {
   "id": "@vclu/tasmota-switch",
   "name": "Tasmota Switch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Factory for Tasmota switch objects (Sonoff, etc.)",
   "author": "vCLU",
   "config": {}
