@@ -243,12 +243,12 @@ frigate:onInit(function(config)
         onTick = function(done)
             apiRequest("/api/stats", function(data, err)
                 if err then
-                    done(err)
+                    done(nil, err)
                     return
                 end
 
                 if type(data) ~= "table" then
-                    done("Invalid stats response")
+                    done(nil, "Invalid stats response")
                     return
                 end
 
@@ -342,7 +342,7 @@ frigate:onInit(function(config)
 
                 apiRequest(url, function(data, err)
                     if err then
-                        done(err)
+                        done(nil, err)
                         return
                     end
 

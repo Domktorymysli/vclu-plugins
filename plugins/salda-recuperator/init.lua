@@ -232,13 +232,13 @@ salda:onInit(function(config)
             -- Fetch main data
             request("FUNC(4,1,4,0,24)", function(body, err)
                 if err then
-                    done(err)
+                    done(nil, err)
                     return
                 end
 
                 local parts = parseDataResponse(body)
                 if #parts < 17 then
-                    done("Invalid data response")
+                    done(nil, "Invalid data response")
                     return
                 end
 

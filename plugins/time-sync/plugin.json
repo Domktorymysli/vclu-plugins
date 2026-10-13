@@ -1,7 +1,7 @@
 {
   "id": "time-sync",
   "name": "Time Sync",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
   "author": "vCLU",
   "license": "MIT",

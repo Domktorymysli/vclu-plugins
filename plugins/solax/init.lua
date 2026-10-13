@@ -157,7 +157,7 @@ solax:onInit(function(config)
                 if not resp or not resp.ok then
                     state.online = false
                     notify("online")
-                    done("HTTP " .. tostring(resp and resp.status or "no response"))
+                    done(nil, (resp and resp.err) or ("HTTP " .. tostring(resp and resp.status or "no response")))
                     return
                 end
 
@@ -165,7 +165,7 @@ solax:onInit(function(config)
                 if not data then
                     state.online = false
                     notify("online")
-                    done(parseErr or "parse error")
+                    done(nil, parseErr or "parse error")
                     return
                 end
 

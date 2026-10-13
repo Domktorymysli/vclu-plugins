@@ -191,7 +191,7 @@ telegram:onInit(function(config)
                             allowed_updates = "message,callback_query"
                         }, function(updates, err)
                             if err then
-                                done(err)
+                                done(nil, err)
                                 return
                             end
 

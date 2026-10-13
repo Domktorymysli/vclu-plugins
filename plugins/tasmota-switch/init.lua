@@ -130,7 +130,7 @@ function TasmotaSwitch:_startPolling()
         onTick = function(done)
             self:_command("Power", function(json, err)
                 if err then
-                    done(err)
+                    done(nil, err)
                     return
                 end
                 self:_updateState(json)
