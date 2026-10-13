@@ -251,13 +251,13 @@ plugin:onInit(function(config)
                 parseJson = "success"
             }, function(resp)
                 if resp.err then
-                    done(resp.err)
+                    done(nil, resp.err)
                     return
                 end
 
                 local data, err = parseResponse(resp.json)
                 if not data then
-                    done(err)
+                    done(nil, err)
                     return
                 end
 
@@ -476,11 +476,12 @@ local poller = plugin:poller("fetch", {
     -- Callbacks
     onTick = function(done)
         -- Do async work...
-        -- Call done() on success
-        -- Call done("error message") on failure
+        -- done(data, err): call done() or done(data) on success,
+        -- done(nil, "error message") on failure. A single argument is data:
+        -- done("error") counts as a success, so onError, retry and backoff never run.
         plugin:httpRequest({ url = "..." }, function(resp)
             if resp.err then
-                done(resp.err)  -- triggers retry
+                done(nil, resp.err)  -- failure: onError, retry, backoff
                 return
             end
             -- process data...

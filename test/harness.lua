@@ -132,6 +132,31 @@ function M.install(opts)
 
     function Plugin:get(id) return env.sensors[id] end
 
+    -- A control is a sensor with a setter; tests read it through env.sensors.
+    function Plugin:control(id, getter, setter)
+        local c = self:sensor(id, getter)
+        c.set = function(_, v) return setter(v) end
+        return c
+    end
+
+    -- Plugin key-value store, kept per test run.
+    env.kv = {}
+    function Plugin:kvGet(key, default)
+        if env.kv[key] == nil then return default end
+        return env.kv[key]
+    end
+    function Plugin:kvSet(key, value) env.kv[key] = value; return true end
+    function Plugin:kvDelete(key) env.kv[key] = nil; return true end
+
+    function Plugin:url(base, params)
+        local q = {}
+        for k, v in pairs(params or {}) do q[#q + 1] = tostring(k) .. "=" .. tostring(v) end
+        table.sort(q)
+        return tostring(base) .. (#q > 0 and ("?" .. table.concat(q, "&")) or "")
+    end
+
+    function Plugin:basicAuth(user, pass) return "Basic " .. tostring(user) .. ":" .. tostring(pass) end
+
     function Plugin:httpRequest(reqOpts, cb)
         env.http[#env.http + 1] = reqOpts
         if cb then cb(httpResponder(reqOpts)) end
@@ -174,11 +199,13 @@ function M.install(opts)
     }
 
     --- Run one poller cycle synchronously.
+    -- Returns true and what the plugin passed to done(data, err), as { n, data, err }.
     function env.tick(name)
         local p = env.pollers[name]
         if not p or not p.onTick then return false end
-        p.onTick(function() end)
-        return true
+        local got = nil
+        p.onTick(function(...) got = { n = select("#", ...), data = (...), err = select(2, ...) } end)
+        return true, got
     end
 
     --- Every emit recorded for one event name.

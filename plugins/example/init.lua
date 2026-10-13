@@ -131,8 +131,8 @@ function setupPoller(apiUrl, intervalSec)
             }, function(resp)
                 -- resp zawsze jest tabelą: { status, body, headers, json, err, errCode }
                 if resp.err then
-                    -- Przekaż błąd do done() - poller obsłuży retry
-                    done(resp.err)
+                    -- Błąd drugim argumentem: done(nil, err). Poller policzy porażkę, wywoła onError i ponowi
+                    done(nil, resp.err)
                     return
                 end
 

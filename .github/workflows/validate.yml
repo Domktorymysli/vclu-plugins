@@ -87,7 +87,7 @@ jobs:
         run: |
           rc=0
           found=0
-          for file in plugins/*/test.lua; do
+          for file in plugins/*/test.lua test/*_test.lua; do
             [ -f "$file" ] || continue
             found=1
             echo "=== $file"

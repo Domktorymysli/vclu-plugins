@@ -1,7 +1,7 @@
 {
   "id": "example",
   "name": "Example Plugin",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "author": "vCLU Team",
   "license": "MIT",
   "description": "Przykładowy plugin pokazujący jak pisać własne pluginy dla vCLU z expose API",

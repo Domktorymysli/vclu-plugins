@@ -255,13 +255,13 @@ supla:onInit(function(config)
                 log = { redact = true }
             }, function(resp)
                 if resp.err then
-                    done(resp.err)
+                    done(nil, resp.err)
                     return
                 end
 
                 local data, parseErr = parseResponse(resp.json)
                 if not data then
-                    done(parseErr or "Parse error")
+                    done(nil, parseErr or "Parse error")
                     return
                 end
 
