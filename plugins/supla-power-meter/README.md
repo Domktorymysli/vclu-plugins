@@ -138,39 +138,38 @@ Plugin udostępnia sensory przez `plugin:get()`:
 | `power1/2/3`  | W    | Moc fazy 1/2/3           |
 | `current1/2/3`| A    | Prąd fazy 1/2/3          |
 
+Odczyty z licznika wystawiaj jako `number` z `readonly = true`. Bez `readonly` Home Assistant
+dostaje encję `number` (suwak, który da się przestawić), a nie sensor. `device_class` i
+`state_class` mówią HA, czym jest wartość; panel **Energia** przyjmuje tylko licznik z
+`device_class = "energy"` i `state_class = "total_increasing"`.
+
 ### Przykład - expose do HA
 
 ```lua
 local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 
--- Moc całkowita
-expose(supla:get("power"), "number", {
-    name = "Moc Całkowita",
-    area = "Techniczny",
-    unit = "W",
-    min = -10000,  -- ujemna = eksport do sieci
-    max = 20000
-})
+local function sensor(id, name, unit, deviceClass, stateClass)
+    expose(supla:get(id), "number", {
+        name = name, area = "Techniczny", unit = unit, readonly = true,
+        device_class = deviceClass, state_class = stateClass or "measurement",
+    })
+end
 
--- Energia pobrana
-expose(supla:get("energy"), "number", {
-    name = "Energia Pobrana",
-    area = "Techniczny",
-    unit = "kWh"
-})
+-- Liczniki energii do panelu Energia
+sensor("energy", "Energia Pobrana", "kWh", "energy", "total_increasing")
+sensor("reverseEnergy", "Energia Oddana", "kWh", "energy", "total_increasing")
 
--- Napięcia per-faza
-expose(supla:get("voltage1"), "number", { name = "Napięcie L1", area = "Techniczny", unit = "V" })
-expose(supla:get("voltage2"), "number", { name = "Napięcie L2", area = "Techniczny", unit = "V" })
-expose(supla:get("voltage3"), "number", { name = "Napięcie L3", area = "Techniczny", unit = "V" })
+-- Moc całkowita (ujemna = eksport do sieci)
+sensor("power", "Moc Całkowita", "W", "power")
 
--- Moc per-faza
-expose(supla:get("power1"), "number", { name = "Moc L1", area = "Techniczny", unit = "W" })
-expose(supla:get("power2"), "number", { name = "Moc L2", area = "Techniczny", unit = "W" })
-expose(supla:get("power3"), "number", { name = "Moc L3", area = "Techniczny", unit = "W" })
+-- Per-faza
+for n = 1, 3 do
+    sensor("voltage" .. n, "Napięcie L" .. n, "V", "voltage")
+    sensor("power" .. n, "Moc L" .. n, "W", "power")
+    sensor("current" .. n, "Prąd L" .. n, "A", "current")
+end
 
--- Częstotliwość
-expose(supla:get("frequency"), "number", { name = "Częstotliwość", area = "Techniczny", unit = "Hz" })
+sensor("frequency", "Częstotliwość", "Hz", "frequency")
 ```
 
 ### Expose - tylko podstawowe
@@ -178,18 +177,26 @@ expose(supla:get("frequency"), "number", { name = "Częstotliwość", area = "Te
 ```lua
 local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 
--- Tylko moc i energia
-expose(supla:get("power"), "number", { name = "Moc", area = "Techniczny", unit = "W" })
-expose(supla:get("energy"), "number", { name = "Energia", area = "Techniczny", unit = "kWh" })
+expose(supla:get("power"), "number", {
+    name = "Moc", area = "Techniczny", unit = "W", readonly = true,
+    device_class = "power", state_class = "measurement",
+})
+expose(supla:get("energy"), "number", {
+    name = "Energia", area = "Techniczny", unit = "kWh", readonly = true,
+    device_class = "energy", state_class = "total_increasing",
+})
 ```
 
 ### Rezultat w Home Assistant
 
-Po expose w HA pojawią się:
+Po expose w HA pojawią się sensory:
+- **sensor.energia_pobrana**, **sensor.energia_oddana** - liczniki energii [kWh]; wybierz je w
+  *Ustawienia → Panele → Energia* jako pobór z sieci i oddawanie do sieci
 - **sensor.moc_calkowita** - aktualna moc [W]
-- **sensor.energia_pobrana** - licznik energii [kWh]
-- **sensor.napiecie_l1/l2/l3** - napięcia faz [V]
-- **sensor.moc_l1/l2/l3** - moc per-faza [W]
+- **sensor.napiecie_l1/l2/l3**, **sensor.moc_l1/l2/l3**, **sensor.prad_l1/l2/l3** - pomiary faz
+
+Statystyki do panelu Energia HA zaczyna liczyć od chwili pojawienia się sensora; pierwsze
+słupki zobaczysz po około godzinie.
 
 ## Przykłady automatyzacji
 

@@ -8,27 +8,16 @@
 -- ```lua
 -- local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 --
--- -- Moc całkowita (W)
+-- -- Readonly: a sensor in Home Assistant, not a settable number
 -- expose(supla:get("power"), "number", {
---     name = "Moc",
---     area = "Techniczny",
---     unit = "W",
---     min = 0,
---     max = 20000
+--     name = "Moc", area = "Techniczny", unit = "W", readonly = true,
+--     device_class = "power", state_class = "measurement"
 -- })
 --
--- -- Energia (kWh)
+-- -- The HA Energy dashboard needs device_class energy + state_class total_increasing
 -- expose(supla:get("energy"), "number", {
---     name = "Energia",
---     area = "Techniczny",
---     unit = "kWh"
--- })
---
--- -- Napięcie fazy 1
--- expose(supla:get("voltage1"), "number", {
---     name = "Napięcie L1",
---     area = "Techniczny",
---     unit = "V"
+--     name = "Energia", area = "Techniczny", unit = "kWh", readonly = true,
+--     device_class = "energy", state_class = "total_increasing"
 -- })
 -- ```
 --
@@ -52,7 +41,7 @@
 
 local supla = Plugin:new("supla-power-meter", {
     name = "Supla Power Meter",
-    version = "2.1.0",
+    version = "2.1.2",
     description = "Supla 3-phase power meter integration with expose API support"
 })
 
