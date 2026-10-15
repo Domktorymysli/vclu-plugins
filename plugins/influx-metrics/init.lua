@@ -40,7 +40,7 @@
 
 local plugin = Plugin:new("influx-metrics", {
     name = "InfluxDB Metrics",
-    version = "1.1.1",
+    version = "1.1.2",
     description = "Send metrics to InfluxDB/Telegraf/VictoriaMetrics"
 })
 
@@ -151,14 +151,17 @@ local function formatTags(tags)
 end
 
 --- Format field value for line protocol
+-- A number is a float, so 21.0 and 21.5 land in the same field: InfluxDB fixes a
+-- field's type at its first write and rejects the other type after it.
 -- @param value any Field value
--- @return string Formatted value
-local function formatValue(value)
+-- @param integer boolean Write a whole number as an integer (counters)
+-- @return string|nil Formatted value, nil for NaN and infinity
+local function formatValue(value, integer)
     local t = type(value)
     if t == "number" then
-        -- Check if integer
-        if value == math.floor(value) and math.abs(value) < 2^53 then
-            return tostring(value) .. "i"
+        if value - value ~= 0 then return nil end
+        if integer and value == math.floor(value) and math.abs(value) < 2^53 then
+            return string.format("%di", value)
         end
         return tostring(value)
     elseif t == "boolean" then
@@ -177,6 +180,10 @@ end
 -- @param tags table Optional tags
 -- @param timestamp number Optional timestamp (unix seconds)
 function MetricCollector:write(measurement, fields, tags, timestamp)
+    self:_write(measurement, fields, tags, timestamp, false)
+end
+
+function MetricCollector:_write(measurement, fields, tags, timestamp, integer)
     -- Validate and slugify measurement name
     local measSlug = slugifyKey(measurement)
     if not measSlug then
@@ -210,8 +217,9 @@ function MetricCollector:write(measurement, fields, tags, timestamp)
 
     for _, kv in ipairs(fieldKeys) do
         local v = fields[kv.orig]
-        if v ~= nil then
-            table.insert(fieldParts, escapeKey(kv.slug) .. "=" .. formatValue(v))
+        local formatted = v ~= nil and formatValue(v, integer)
+        if formatted then
+            table.insert(fieldParts, escapeKey(kv.slug) .. "=" .. formatted)
         end
     end
 
@@ -263,7 +271,7 @@ end
 -- @param value number Increment value (default 1)
 -- @param tags table Optional tags
 function MetricCollector:counter(name, value, tags)
-    self:write(name, value or 1, tags)
+    self:_write(name, value or 1, tags, nil, true)
 end
 
 --- Write multiple fields as single metric
