@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-16T21:36:22Z",
+  "updated": "2026-10-16T21:52:17Z",
   "plugins": [
     {
       "id": "weather",
@@ -202,7 +202,7 @@
     {
       "id": "spotify",
       "name": "Spotify",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Sterowanie Spotify przez Web API (Premium)",
       "author": "vCLU",
       "path": "plugins/spotify",
@@ -213,12 +213,13 @@
       ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "spotify-v0.1.1"
     },
     {
       "id": "musiccast",
       "name": "Yamaha MusicCast",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Amplitunery i głośniki Yamaha MusicCast przez lokalne API",
       "author": "vCLU",
       "path": "plugins/musiccast",
@@ -229,7 +230,8 @@
       ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "musiccast-v0.1.1"
     }
   ]
 }
