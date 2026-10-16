@@ -1,0 +1,8 @@
+{
+  "id": "@vclu/spotify",
+  "name": "Spotify",
+  "version": "0.1.0",
+  "description": "Factory for Spotify accounts controlled through the Web API (Premium)",
+  "author": "vCLU",
+  "config": {}
+}

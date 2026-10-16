@@ -83,4 +83,27 @@ do
     check("tasmota-switch: has a poller to tick", ticked > 0)
 end
 
+-- Spotify and MusicCast are factories too. Spotify polls only once
+-- authorized, so its account gets a refresh token up front.
+local factories = {
+    { name = "musiccast", opts = { id = "salon", ip = "127.0.0.1" } },
+    { name = "spotify", opts = { id = "dom", clientId = "c", clientSecret = "s", refreshToken = "rt" } },
+}
+for _, f in ipairs(factories) do
+    print("== " .. f.name)
+    local env = harness.install({ http = function() return REFUSED end })
+    local plugin = dofile(root .. "/plugins/" .. f.name .. "/init.lua")
+    plugin:create(f.opts)
+    local ticked = 0
+    for pollerName in pairs(env.pollers) do
+        local ran, got = env.tick(pollerName)
+        if ran then
+            ticked = ticked + 1
+            check(f.name .. "/" .. pollerName .. ": done(nil, err) on a refused request",
+                got ~= nil and got.data == nil and type(got.err) == "string" and got.err ~= "")
+        end
+    end
+    check(f.name .. ": has a poller to tick", ticked > 0)
+end
+
 os.exit(harness.report())
