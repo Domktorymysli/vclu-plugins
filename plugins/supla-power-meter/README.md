@@ -143,6 +143,15 @@ dostaje encję `number` (suwak, który da się przestawić), a nie sensor. `devi
 `state_class` mówią HA, czym jest wartość; panel **Energia** przyjmuje tylko licznik z
 `device_class = "energy"` i `state_class = "total_increasing"`.
 
+Sensory `energy` i `reverseEnergy` oddają `nil`, dopóki licznik nie poda pierwszego odczytu,
+a gdy licznik się rozłączy, trzymają ostatnią wartość. Dzięki temu HA nie dostaje zera po
+restarcie i nie liczy powrotu do prawdziwej wartości jako ogromnego zużycia. Metody
+`getTotalEnergy()` i `getReverseEnergy()` dalej zwracają liczbę (0 przed pierwszym odczytem).
+
+Jeśli wystawiałeś już odczyty bez `readonly`, po jego dodaniu encja w HA zmieni się z
+`number.*` na `sensor.*` (vCLU usunie starą). Popraw odwołania w automatyzacjach i kartach;
+historia starej encji nie przechodzi na nową.
+
 ### Przykład - expose do HA
 
 ```lua
