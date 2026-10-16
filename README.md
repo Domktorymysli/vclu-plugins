@@ -398,7 +398,8 @@ plugin:httpRequest({
     -- resp.body     - Response body (string)
     -- resp.headers  - Response headers (table)
     -- resp.json     - Parsed JSON (table, if parseJson enabled)
-    -- resp.err      - Error message (string or nil)
+    -- resp.ok       - true for 2xx
+    -- resp.err      - nil on 2xx, otherwise the network error or "HTTP 404"
     -- resp.errCode  - Error code: "timeout", "network", "http_4xx", "http_5xx", "parse"
     -- resp.elapsed  - Request duration in ms
 
@@ -415,7 +416,11 @@ end)
 
 **parseJson modes:**
 - `"success"` - Parse JSON only on 2xx status
-- `"always"` - Always try to parse (useful for APIs returning errors as JSON)
+- `"always"` - Always try to parse (useful for APIs returning errors as JSON:
+  with `"success"` the API's own message is lost and only `"HTTP 403"` remains)
+
+`if resp.err then` is the whole failure check: a status outside 2xx already
+sets it. Look at `resp.status` only to tell failures apart (e.g. retry on 401).
 - `"never"` - Never parse, return raw body
 
 #### `plugin:url(base, params)`
@@ -888,6 +893,7 @@ Plugins run in an isolated sandbox:
 | `string`, `table`, `math` | `os.execute()`, `io.*` |
 | `pairs`, `ipairs`, `type`, `tonumber`, `tostring` | `loadfile`, `dofile` |
 | `os.time()`, `os.date()` | `rawset`, `rawget`, `debug` |
+| | `setmetatable`, `require` |
 | `JSON:decode()`, `JSON:encode()` | Modifying `_G` |
 | Plugin API (all methods above) | File system access |
 
@@ -895,12 +901,71 @@ All resources (timers, subscriptions, events) are automatically cleaned up when 
 
 ---
 
+## Factory Plugins
+
+A plugin that talks to a device is a factory: no `config` in `plugin.json`, and
+`plugin:create(opts)` returns an independent instance per call. The sandbox is
+keyed by plugin id, so a configured singleton blocks a second gateway, receiver
+or account. Reference: `plugins/tasmota-switch`.
+
+```lua
+local device = Plugin.getPlugin("@vclu/tasmota-switch"):create({ id = "lamp", ip = "192.168.1.100" })
+```
+
+`Plugin.getPlugin(id)` is the accessor; `Plugin.get` is an instance method that
+returns a sensor.
+
+Pitfalls found the hard way:
+
+- **No `setmetatable`.** A metatable class passes every local test and fails on
+  the runtime with `attempt to call a non-function object`. Copy the methods
+  onto the instance: `for k, fn in pairs(Class) do obj[k] = fn end`.
+- **Methods and state share one table.** A field named like a method replaces
+  it at the first assignment (`self._playback = "play"` kills
+  `self:_playback()`). Keep state under different names than methods.
+- **Duplicate ids.** Sensor and poller names are flat across vCLU. Derive them
+  from the instance `id`, and on a duplicate log an error and return the
+  existing instance instead of replacing it.
+- **KV is per plugin, not per instance.** Prefix keys with the instance id:
+  `plugin:kvSet("token:" .. self._id, ...)`.
+- **Cleanup.** Keep the instances in a list and stop their pollers in
+  `onCleanup`, or a reload leaves them polling.
+
+### Making an instance exposable
+
+Only when it is worth it: `expose()` sends the object to HA, Apple Home and
+the dashboard, so it pays off for devices HA cannot reach on its own (Supla,
+Modbus meters). A device with a native HA integration does not need it.
+
+- `get(feature)` returns the state, `set(feature, value)` changes it.
+- `onChange(cb)` **must return a function that removes `cb`**. `expose()`
+  calls it on `unexpose()`; anything else leaves the callback registered and
+  logs a warning.
+- One object is one type. A receiver with power and volume is two objects
+  (`switch` and `number`); HA has no MQTT media player.
+
+## Testing
+
+`test/harness.lua` stands in for the runtime, so a plugin runs under a bare
+`lua` with no vCLU. Responses follow the runtime: an HTTP responder returns
+`{ status, json }` or `{ err }`, and a status outside 2xx arrives with
+`resp.err = "HTTP <status>"`.
+
+```bash
+lua plugins/tasmota-switch/test.lua
+```
+
+The harness is plain Lua with `setmetatable`, so check in the test that the
+plugin does not use it and that methods sit on the instance
+(`rawget(obj, "on")`). See `plugins/tasmota-switch/test.lua`.
+
 ## Creating a New Plugin
 
-1. Copy `plugins/example/` as template
-2. Edit `plugin.json` (id, name, config schema)
-3. Write logic in `init.lua` following the template
-4. Test locally
+1. Copy `plugins/tasmota-switch/` for a device (factory), or `plugins/example/`
+   for a single service configured from the panel
+2. Edit `plugin.json` (id, name; `config` only for the singleton kind)
+3. Write logic in `init.lua`
+4. Add `test.lua` on `test/harness.lua` and run it
 5. Submit Pull Request
 
 ---
