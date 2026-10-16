@@ -119,6 +119,8 @@ Tworzy nowy collector metryk.
 | `tags`      | table  | {}          | Globalne tagi dodawane do wszystkich metryk |
 | `precision` | string | "s"         | Precyzja timestampów: s, ms, us, ns         |
 
+**Typy pól:** liczby z `gauge`, `fields` i `write` są zapisywane jako float, także pełne (21.0 to `21.0`, nie `21i`), bo InfluxDB ustala typ pola przy pierwszym zapisie i odrzuca później inny. Tylko `counter` zapisuje pełne liczby jako integer. NaN i nieskończoność są pomijane.
+
 **Walidacja kluczy:**
 - Measurement, tagi i pola są automatycznie "slugifikowane" do `[a-zA-Z0-9_]`
 - Nieprawidłowe znaki zamieniane na `_`
