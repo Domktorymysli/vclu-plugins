@@ -939,6 +939,12 @@ not in the plugin, so a plugin does not need `get`/`set`/`onChange` or its own
 event system. Whoever wants to `expose` wraps the instance in a small object
 of their own.
 
+A plugin that wants to make this easier registers values with
+`plugin:sensor()` / `plugin:control()` (as `supla-power-meter` and
+`modbus-gateway` do); the runtime gives those objects a correct `onChange`, and
+the user exposes them with `expose(plugin:get("power"), "number", {...})`. In a
+factory, derive the sensor id from the instance id.
+
 That object (or a plugin that already offers it, like `tasmota-switch`)
 follows the expose contract:
 
