@@ -931,11 +931,16 @@ Pitfalls found the hard way:
 - **Cleanup.** Keep the instances in a list and stop their pollers in
   `onCleanup`, or a reload leaves them polling.
 
-### Making an instance exposable
+### Exposing is the user's call
 
-Only when it is worth it: `expose()` sends the object to HA, Apple Home and
-the dashboard, so it pays off for devices HA cannot reach on its own (Supla,
-Modbus meters). A device with a native HA integration does not need it.
+A plugin makes talking to a service easy: methods, state, polling. Whether the
+device goes to HA, Apple Home or the dashboard is decided in the user's module,
+not in the plugin, so a plugin does not need `get`/`set`/`onChange` or its own
+event system. Whoever wants to `expose` wraps the instance in a small object
+of their own.
+
+That object (or a plugin that already offers it, like `tasmota-switch`)
+follows the expose contract:
 
 - `get(feature)` returns the state, `set(feature, value)` changes it.
 - `onChange(cb)` **must return a function that removes `cb`**. `expose()`
