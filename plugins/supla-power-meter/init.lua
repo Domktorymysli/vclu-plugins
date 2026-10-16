@@ -8,27 +8,16 @@
 -- ```lua
 -- local supla = Plugin.getPlugin("@vclu/supla-power-meter")
 --
--- -- Moc całkowita (W)
+-- -- Readonly: a sensor in Home Assistant, not a settable number
 -- expose(supla:get("power"), "number", {
---     name = "Moc",
---     area = "Techniczny",
---     unit = "W",
---     min = 0,
---     max = 20000
+--     name = "Moc", area = "Techniczny", unit = "W", readonly = true,
+--     device_class = "power", state_class = "measurement"
 -- })
 --
--- -- Energia (kWh)
+-- -- The HA Energy dashboard needs device_class energy + state_class total_increasing
 -- expose(supla:get("energy"), "number", {
---     name = "Energia",
---     area = "Techniczny",
---     unit = "kWh"
--- })
---
--- -- Napięcie fazy 1
--- expose(supla:get("voltage1"), "number", {
---     name = "Napięcie L1",
---     area = "Techniczny",
---     unit = "V"
+--     name = "Energia", area = "Techniczny", unit = "kWh", readonly = true,
+--     device_class = "energy", state_class = "total_increasing"
 -- })
 -- ```
 --
@@ -52,7 +41,7 @@
 
 local supla = Plugin:new("supla-power-meter", {
     name = "Supla Power Meter",
-    version = "2.1.0",
+    version = "2.1.2",
     description = "Supla 3-phase power meter integration with expose API support"
 })
 
@@ -68,8 +57,9 @@ local state = {
     -- Total values
     totalPower = 0,
     totalCurrent = 0,
-    totalEnergy = 0,
-    totalReverseEnergy = 0,
+    -- nil until the meter reports them, see realEnergy()
+    totalEnergy = nil,
+    totalReverseEnergy = nil,
     totalCost = 0,
     -- Per-phase data
     phases = {},
@@ -94,6 +84,14 @@ local function normalizeUrl(url)
         end
     end
     return url
+end
+
+-- A lifetime energy counter is never 0: a 0 is a reply without phases
+-- (meter offline). Keeping the last reading stops HA's total_increasing from
+-- counting the jump back from 0 as consumption.
+local function realEnergy(new, last)
+    if type(new) == "number" and new > 0 then return new end
+    return last
 end
 
 local function parsePhase(phaseData)
@@ -276,8 +274,8 @@ supla:onInit(function(config)
                 state.connected = data.connected
                 state.totalPower = data.totalPower
                 state.totalCurrent = data.totalCurrent
-                state.totalEnergy = data.totalEnergy
-                state.totalReverseEnergy = data.totalReverseEnergy
+                state.totalEnergy = realEnergy(data.totalEnergy, state.totalEnergy)
+                state.totalReverseEnergy = realEnergy(data.totalReverseEnergy, state.totalReverseEnergy)
                 state.totalCost = data.totalCost
                 state.currency = data.currency
                 state.pricePerUnit = data.pricePerUnit
@@ -289,8 +287,8 @@ supla:onInit(function(config)
                     connected = data.connected,
                     totalPower = data.totalPower,
                     totalCurrent = data.totalCurrent,
-                    totalEnergy = data.totalEnergy,
-                    totalReverseEnergy = data.totalReverseEnergy,
+                    totalEnergy = state.totalEnergy or 0,
+                    totalReverseEnergy = state.totalReverseEnergy or 0,
                     totalCost = data.totalCost,
                     currency = data.currency,
                     pricePerUnit = data.pricePerUnit,
@@ -334,7 +332,7 @@ supla:onInit(function(config)
                         connected = data.connected,
                         totalPower = data.totalPower,
                         totalCurrent = data.totalCurrent,
-                        totalEnergy = data.totalEnergy
+                        totalEnergy = state.totalEnergy or 0
                     }, { throttle = 30000 })
                 end
 
@@ -388,12 +386,14 @@ function supla:getTotalCurrent()
     return state.totalCurrent
 end
 
+-- The getters keep returning a number; only the sensors report nil before
+-- the first reading.
 function supla:getTotalEnergy()
-    return state.totalEnergy
+    return state.totalEnergy or 0
 end
 
 function supla:getReverseEnergy()
-    return state.totalReverseEnergy
+    return state.totalReverseEnergy or 0
 end
 
 function supla:getTotalCost()
@@ -450,8 +450,8 @@ function supla:getData()
         connected = state.connected,
         totalPower = state.totalPower,
         totalCurrent = state.totalCurrent,
-        totalEnergy = state.totalEnergy,
-        totalReverseEnergy = state.totalReverseEnergy,
+        totalEnergy = state.totalEnergy or 0,
+        totalReverseEnergy = state.totalReverseEnergy or 0,
         totalCost = state.totalCost,
         currency = state.currency,
         pricePerUnit = state.pricePerUnit,
