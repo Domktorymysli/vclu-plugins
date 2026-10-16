@@ -973,7 +973,9 @@ plugin does not use it and that methods sit on the instance
 
 1. Copy `plugins/musiccast/` for a device (factory), or `plugins/example/`
    for a single service configured from the panel
-2. Edit `plugin.json` (id, name; `config` only for the singleton kind)
+2. Edit `plugin.json` (id, name; `config` only for the singleton kind). The id
+   is the short one, the same as in `plugins.json` (`musiccast`, not
+   `@vclu/musiccast`); the runtime adds the namespace for `Plugin.getPlugin`
 3. Write logic in `init.lua`
 4. Add `test.lua` on `test/harness.lua` and run it
 5. Submit Pull Request
