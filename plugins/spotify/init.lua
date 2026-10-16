@@ -231,7 +231,7 @@ function SpotifyAccount:_startPolling()
                 done()
                 return
             end
-            self:refresh(function(_, err) done(err) end)
+            self:refresh(function(_, err) done(nil, err) end)
         end,
 
         onError = function(err)

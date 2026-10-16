@@ -133,7 +133,7 @@ function MusicCast:_startPolling()
         timeout = 10000,
 
         onTick = function(done)
-            self:refresh(function(_, err) done(err) end)
+            self:refresh(function(_, err) done(nil, err) end)
         end,
 
         onError = function(err)
