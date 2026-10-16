@@ -13,6 +13,7 @@ before writing one, especially:
 - **Testing**: `lua plugins/<name>/test.lua` on `test/harness.lua`.
 
 A new plugin needs its own entry in `plugins.json` (id, name, version, path,
-tags). After a merge, `.github/workflows/tag-plugins.yml` tags every version
+tags), with the same short id as its `plugin.json` (`musiccast`, not
+`@vclu/musiccast`); the tag workflow matches the two by id. After a merge, `.github/workflows/tag-plugins.yml` tags every version
 bump and syncs `version` and `tag` into the existing entries, so leave those
 two fields to it.
