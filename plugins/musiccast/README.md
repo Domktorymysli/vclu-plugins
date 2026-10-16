@@ -25,12 +25,12 @@ salon:setMute(true)
 salon:play() ; salon:pause() ; salon:next()
 salon:off()                    -- standby
 
-salon:onChange(function(on) print(on == 1 and "włączony" or "standby") end)
-salon:onTrack(function(t) print(t.artist .. " - " .. t.title) end)
-
-expose(salon, "switch", { name = "Amplituner" })
-expose(salon:volumeControl(), "number", { id = "salon_volume", name = "Głośność salon" })
+print(salon:getTrack().artist, salon:getVolume())   -- stan z ostatniego odczytu
 ```
+
+Wtyczka nie wystawia urządzenia przez `expose`: Home Assistant ma własną
+integrację MusicCast z pełnym odtwarzaczem. Jej miejsce to automatyka w Lua,
+np. przycisk Grentona włącza radio w salonie.
 
 Głośność w API wtyczki to zawsze procent; wtyczka przelicza go na skalę urządzenia
 (`max_volume` z `getStatus`, np. 161 w RX-A2A).
@@ -44,8 +44,6 @@ Głośność w API wtyczki to zawsze procent; wtyczka przelicza go na skalę urz
 | `setInput(name)` | wejście |
 | `play()`, `pause()`, `stop()`, `next()`, `previous()`, `recallPreset(n)` | odtwarzanie sieciowe |
 | `refresh()`, `isOn()`, `getVolume()`, `isMuted()`, `getInput()`, `getTrack()`, `getState()` | stan |
-| `volumeControl()` | obiekt do `expose(..., "number")` |
-| `onChange(cb)`, `onTrack(cb)` | zdarzenia |
 
 Opcje `create`: `id` (domyślnie ip), `ip`, `name`, `zone` (`main`, `zone2`, ...),
 `polling` (domyślnie `true`), `pollInterval` (s, domyślnie 10).

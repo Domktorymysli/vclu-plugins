@@ -87,21 +87,15 @@ check("plugin does not call setmetatable", src:find("setmetatable%s*%(") == nil)
 -- PLAYBACK
 --------------------------------------------------------------------------------
 
-local changes = {}
-sp:onChange(function(new) changes[#changes + 1] = new end)
-local tracks = 0
-sp:onTrack(function() tracks = tracks + 1 end)
-
 sp:refresh()
 check("refresh reads playing state", sp:isPlaying() == true)
 check("refresh reads the track", sp:getTrack().artist == "A, B" and sp:getTrack().title == "Utwór")
 check("refresh reads volume and device", sp:getVolume() == 40 and sp:getDevice() == "Kuchnia")
-check("a new track fires OnTrack", tracks == 1)
 
 sp:pause()
 check("pause goes as PUT /me/player/pause",
       env.http[#env.http].method == "PUT" and env.http[#env.http].url:find("/me/player/pause$"))
-check("pause flips the state and fires OnChange", sp:isPlaying() == false and changes[#changes] == 0)
+check("pause flips the state", sp:isPlaying() == false)
 
 sp:play({ uri = "spotify:playlist:abc", device = "Salon" })
 local req = env.http[#env.http]
@@ -126,13 +120,13 @@ check("a 401 refreshes the token and retries", tokenCalls == before + 1
       and env.http[#env.http].url:find("/me/player/next$"))
 
 --------------------------------------------------------------------------------
--- EXPOSE AND CLEANUP
+-- NOT EXPOSABLE AND CLEANUP
+--
+-- HA has its own Spotify integration. An onChange without an unsubscribe
+-- return would break expose(), so the account offers none.
 --------------------------------------------------------------------------------
 
-sp:set(0, 0)
-check("expose set(0) pauses", sp:get(0) == 0)
-sp:set(0, 1)
-check("expose set(1) plays", sp:get(0) == 1)
+check("the account offers no onChange", sp.onChange == nil)
 
 local polled = plugin:create({ id = "polled", clientId = "c", clientSecret = "s" })
 check("polling is on by default", env.pollers["poll_polled"] ~= nil)

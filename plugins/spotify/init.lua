@@ -20,8 +20,6 @@
         sp:pause()
         sp:next()
         sp:setVolume(30)
-
-        expose(sp, "switch", { name = "Spotify" })
 ]]
 
 --------------------------------------------------------------------------------
@@ -49,7 +47,6 @@ local SpotifyAccount = {}
 
 function SpotifyAccount:new(options)
     local obj = {
-        _type = "switch",
         _id = options.id or "spotify",
         _name = options.name or "Spotify",
         _clientId = options.clientId,
@@ -64,7 +61,6 @@ function SpotifyAccount:new(options)
         _device = nil,
         _online = false,
         _lastError = nil,
-        _eventHandlers = {},
         _pollInterval = options.pollInterval or 15,
         _poller = nil
     }
@@ -124,8 +120,8 @@ function SpotifyAccount:_tokenRequest(form, callback)
         form = form,
         timeout = 10000
     }, function(resp)
-        if resp.err or not resp.ok or not resp.json or not resp.json.access_token then
-            local err = resp.err or ("token request failed: HTTP " .. tostring(resp.status))
+        if resp.err or not (resp.json and resp.json.access_token) then
+            local err = "token request failed: " .. (resp.err or "no access_token")
             self._lastError = err
             plugin:log("warn", self._name .. ": " .. err)
             callback(false, err)
@@ -185,8 +181,8 @@ function SpotifyAccount:_api(method, path, opts, callback, retried)
                 self:_api(method, path, opts, callback, true)
                 return
             end
-            if resp.err or not resp.ok then
-                local msg = resp.err or ("HTTP " .. tostring(resp.status))
+            if resp.err then
+                local msg = resp.err
                 if resp.status == 404 then msg = "no active device" end
                 self._lastError = msg
                 if callback then callback(nil, msg) end
@@ -201,9 +197,6 @@ function SpotifyAccount:_api(method, path, opts, callback, retried)
 end
 
 function SpotifyAccount:_updateState(json)
-    local wasPlaying = self._playing
-    local oldTrack = self._track and self._track.uri
-
     if not json or not json.device then
         self._playing = false
         self._device = nil
@@ -222,14 +215,6 @@ function SpotifyAccount:_updateState(json)
                 album = item.album and item.album.name
             }
         end
-    end
-
-    if self._playing ~= wasPlaying then
-        self:emit("OnChange", self._playing and 1 or 0, wasPlaying and 1 or 0)
-    end
-    local newTrack = self._track and self._track.uri
-    if newTrack and newTrack ~= oldTrack then
-        self:emit("OnTrack", self._track)
     end
 end
 
@@ -316,10 +301,7 @@ function SpotifyAccount:play(opts, callback)
             query = deviceId and { device_id = deviceId } or nil,
             json = body
         }, function(json, apiErr)
-            if not apiErr and not self._playing then
-                self._playing = true
-                self:emit("OnChange", 1, 0)
-            end
+            if not apiErr then self._playing = true end
             if callback then callback(json, apiErr) end
         end)
     end)
@@ -327,10 +309,7 @@ end
 
 function SpotifyAccount:pause(callback)
     self:_api("PUT", "/me/player/pause", nil, function(json, err)
-        if not err and self._playing then
-            self._playing = false
-            self:emit("OnChange", 0, 1)
-        end
+        if not err then self._playing = false end
         if callback then callback(json, err) end
     end)
 end
@@ -405,54 +384,6 @@ function SpotifyAccount:getState()
         online = self._online,
         lastError = self._lastError
     }
-end
-
---------------------------------------------------------------------------------
--- EXPOSE INTERFACE (switch: on = play, off = pause)
---------------------------------------------------------------------------------
-
-function SpotifyAccount:get(feature)
-    return self._playing and 1 or 0
-end
-
-function SpotifyAccount:set(feature, value)
-    if value == 1 or value == true or value == "ON" then
-        self:play()
-    else
-        self:pause()
-    end
-end
-
-function SpotifyAccount:switchOn() self:play() end
-function SpotifyAccount:switchOff() self:pause() end
-
---------------------------------------------------------------------------------
--- EVENT SYSTEM
---------------------------------------------------------------------------------
-
-function SpotifyAccount:on_event(event, callback)
-    if not self._eventHandlers[event] then
-        self._eventHandlers[event] = {}
-    end
-    table.insert(self._eventHandlers[event], callback)
-    return self
-end
-
-function SpotifyAccount:emit(event, ...)
-    local handlers = self._eventHandlers[event]
-    if handlers then
-        for _, cb in ipairs(handlers) do
-            pcall(cb, ...)
-        end
-    end
-end
-
-function SpotifyAccount:onChange(callback)
-    return self:on_event("OnChange", callback)
-end
-
-function SpotifyAccount:onTrack(callback)
-    return self:on_event("OnTrack", callback)
 end
 
 --------------------------------------------------------------------------------

@@ -198,6 +198,38 @@
         "vclu": ">=1.0.0"
       },
       "tag": "frigate-v2.0.1"
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "version": "0.1.0",
+      "description": "Sterowanie Spotify przez Web API (Premium)",
+      "author": "vCLU",
+      "path": "plugins/spotify",
+      "tags": [
+        "audio",
+        "spotify",
+        "factory"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
+    },
+    {
+      "id": "musiccast",
+      "name": "Yamaha MusicCast",
+      "version": "0.1.0",
+      "description": "Amplitunery i głośniki Yamaha MusicCast przez lokalne API",
+      "author": "vCLU",
+      "path": "plugins/musiccast",
+      "tags": [
+        "audio",
+        "yamaha",
+        "factory"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
     }
   ]
 }

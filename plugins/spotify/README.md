@@ -41,12 +41,10 @@ sp:setVolume(30)
 sp:transfer("Kuchnia")                                 -- przenieś odtwarzanie
 
 sp:devices(function(list) for _, d in ipairs(list) do print(d.name, d.id) end end)
-
-sp:onTrack(function(t) print(t.artist .. " - " .. t.title) end)
-sp:onChange(function(playing) print(playing == 1 and "gra" or "pauza") end)
-
-expose(sp, "switch", { name = "Spotify" })   -- włącz = graj, wyłącz = pauza
 ```
+
+Wtyczka nie wystawia konta przez `expose`: Home Assistant ma własną integrację
+Spotify.
 
 Urządzenie (`device`) to nazwa lub id z `devices()`. Spotify widzi tylko głośniki,
 które są aktywne w Spotify Connect, uśpiony głośnik może nie być na liście.
@@ -59,7 +57,6 @@ które są aktywne w Spotify Connect, uśpiony głośnik może nie być na liśc
 | `play([uri \| {uri, device}])`, `pause()`, `toggle()`, `next()`, `previous()` | odtwarzanie |
 | `setVolume(0-100)`, `transfer(device, [play])`, `devices(cb)` | głośność i urządzenia |
 | `refresh()`, `isPlaying()`, `getTrack()`, `getVolume()`, `getDevice()`, `getState()` | stan |
-| `onChange(cb)`, `onTrack(cb)` | zdarzenia |
 
 Opcje `create`: `id`, `name`, `clientId`, `clientSecret`, `redirectUri`,
 `refreshToken` (pomija KV), `polling` (domyślnie `true`), `pollInterval` (s, domyślnie 15).

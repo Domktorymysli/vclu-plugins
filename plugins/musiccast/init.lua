@@ -16,8 +16,6 @@
         salon:play()
         salon:off()
 
-        expose(salon, "switch", { name = "Amplituner" })
-        expose(salon:volumeControl(), "number", { id = "salon_volume", name = "Głośność salon" })
 ]]
 
 --------------------------------------------------------------------------------
@@ -47,7 +45,6 @@ local MusicCast = {}
 
 function MusicCast:new(options)
     local obj = {
-        _type = "switch",
         _id = options.id or options.ip,
         _name = options.name or "MusicCast",
         _ip = options.ip,
@@ -61,7 +58,6 @@ function MusicCast:new(options)
         _track = nil,
         _online = false,
         _lastError = nil,
-        _eventHandlers = {},
         _pollInterval = options.pollInterval or 10,
         _poller = nil
     }
@@ -86,7 +82,6 @@ function MusicCast:_call(path, query, callback)
     }, function(resp)
         local json = resp.json
         local err = resp.err
-        if not err and not resp.ok then err = "HTTP " .. tostring(resp.status) end
         if not err and (not json or json.response_code ~= 0) then
             local code = json and json.response_code
             err = "YXC error " .. tostring(code) .. " (" .. (RESPONSE_CODES[code] or "unknown") .. ")"
@@ -95,7 +90,7 @@ function MusicCast:_call(path, query, callback)
         if err then
             self._lastError = err
             -- A refused parameter still means the device answered.
-            if not json then self._online = false end
+            if resp.status == 0 then self._online = false end
             plugin:log("warn", self._name .. ": " .. path .. " - " .. err)
             if callback then callback(nil, err) end
             return
@@ -112,31 +107,21 @@ function MusicCast:_zoneCall(method, query, callback)
 end
 
 function MusicCast:_updateStatus(json)
-    local wasOn = self._power
     self._power = json.power == "on"
     if json.max_volume then self._maxVolume = json.max_volume end
     if json.volume then self._volume = json.volume end
     if json.mute ~= nil then self._mute = json.mute end
     if json.input then self._input = json.input end
-
-    if self._power ~= wasOn then
-        self:emit("OnChange", self._power and 1 or 0, wasOn and 1 or 0)
-    end
 end
 
 function MusicCast:_updatePlayInfo(json)
     self._playback = json.playback
-    local old = self._track and (self._track.artist .. "/" .. self._track.title)
     self._track = {
         artist = json.artist or "",
         title = json.track or "",
         album = json.album or "",
         input = json.input
     }
-    local new = self._track.artist .. "/" .. self._track.title
-    if new ~= old and new ~= "/" then
-        self:emit("OnTrack", self._track)
-    end
 end
 
 function MusicCast:_startPolling()
@@ -286,64 +271,6 @@ function MusicCast:getState()
         online = self._online,
         lastError = self._lastError
     }
-end
-
---------------------------------------------------------------------------------
--- EXPOSE INTERFACE (switch: power)
---------------------------------------------------------------------------------
-
-function MusicCast:get(feature)
-    return self._power and 1 or 0
-end
-
-function MusicCast:set(feature, value)
-    if value == 1 or value == true or value == "ON" then
-        self:on()
-    else
-        self:off()
-    end
-end
-
-function MusicCast:switchOn() self:on() end
-function MusicCast:switchOff() self:off() end
-
---- Separate object for expose(..., "number"): volume 0-100.
-function MusicCast:volumeControl()
-    local device = self
-    return {
-        get = function(_, feature) return device:getVolume() end,
-        set = function(_, feature, value) device:setVolume(value) end,
-        getValue = function() return device:getVolume() end
-    }
-end
-
---------------------------------------------------------------------------------
--- EVENT SYSTEM
---------------------------------------------------------------------------------
-
-function MusicCast:on_event(event, callback)
-    if not self._eventHandlers[event] then
-        self._eventHandlers[event] = {}
-    end
-    table.insert(self._eventHandlers[event], callback)
-    return self
-end
-
-function MusicCast:emit(event, ...)
-    local handlers = self._eventHandlers[event]
-    if handlers then
-        for _, cb in ipairs(handlers) do
-            pcall(cb, ...)
-        end
-    end
-end
-
-function MusicCast:onChange(callback)
-    return self:on_event("OnChange", callback)
-end
-
-function MusicCast:onTrack(callback)
-    return self:on_event("OnTrack", callback)
 end
 
 --------------------------------------------------------------------------------
