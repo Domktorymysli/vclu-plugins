@@ -906,10 +906,10 @@ All resources (timers, subscriptions, events) are automatically cleaned up when 
 A plugin that talks to a device is a factory: no `config` in `plugin.json`, and
 `plugin:create(opts)` returns an independent instance per call. The sandbox is
 keyed by plugin id, so a configured singleton blocks a second gateway, receiver
-or account. Reference: `plugins/tasmota-switch`.
+or account. Reference: `plugins/musiccast`.
 
 ```lua
-local device = Plugin.getPlugin("@vclu/tasmota-switch"):create({ id = "lamp", ip = "192.168.1.100" })
+local salon = Plugin.getPlugin("@vclu/musiccast"):create({ id = "salon", ip = "192.168.0.159" })
 ```
 
 `Plugin.getPlugin(id)` is the accessor; `Plugin.get` is an instance method that
@@ -945,8 +945,7 @@ A plugin that wants to make this easier registers values with
 the user exposes them with `expose(plugin:get("power"), "number", {...})`. In a
 factory, derive the sensor id from the instance id.
 
-That object (or a plugin that already offers it, like `tasmota-switch`)
-follows the expose contract:
+That object follows the expose contract:
 
 - `get(feature)` returns the state, `set(feature, value)` changes it.
 - `onChange(cb)` **must return a function that removes `cb`**. `expose()`
@@ -963,16 +962,16 @@ follows the expose contract:
 `resp.err = "HTTP <status>"`.
 
 ```bash
-lua plugins/tasmota-switch/test.lua
+lua plugins/musiccast/test.lua
 ```
 
 The harness is plain Lua with `setmetatable`, so check in the test that the
 plugin does not use it and that methods sit on the instance
-(`rawget(obj, "on")`). See `plugins/tasmota-switch/test.lua`.
+(`rawget(obj, "on")`). See `plugins/musiccast/test.lua`.
 
 ## Creating a New Plugin
 
-1. Copy `plugins/tasmota-switch/` for a device (factory), or `plugins/example/`
+1. Copy `plugins/musiccast/` for a device (factory), or `plugins/example/`
    for a single service configured from the panel
 2. Edit `plugin.json` (id, name; `config` only for the singleton kind)
 3. Write logic in `init.lua`
