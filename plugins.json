@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-16T18:02:35Z",
+  "updated": "2026-10-16T18:58:27Z",
   "plugins": [
     {
       "id": "weather",
@@ -121,7 +121,7 @@
     {
       "id": "supla-power-meter",
       "name": "Supla Power Meter",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
       "author": "vCLU Team",
       "path": "plugins/supla-power-meter",
@@ -136,7 +136,7 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "supla-power-meter-v2.1.1"
+      "tag": "supla-power-meter-v2.1.2"
     },
     {
       "id": "solax",
