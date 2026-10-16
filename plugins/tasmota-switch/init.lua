@@ -25,7 +25,7 @@
 
 local plugin = Plugin:new("tasmota-switch", {
     name = "Tasmota Switch",
-    version = "1.0.1",
+    version = "1.0.3",
     description = "Factory for Tasmota switch objects"
 })
 
