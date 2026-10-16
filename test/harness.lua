@@ -57,10 +57,10 @@ function M.install(opts)
         exposed = {}    -- ordered list of { object, kind, opts } from expose()
     }
 
-    -- HTTP answers with an empty success unless a test says otherwise. The
-    -- runtime hands the parsed payload back as resp.json, with resp.err set
-    -- on failure; the stub keeps that shape.
-    local httpResponder = opts.http or function() return { code = 200, json = {} } end
+    -- HTTP answers with an empty success unless a test says otherwise. A
+    -- responder returns { status, json } or { err }; httpRequest fills in the
+    -- rest the way the runtime does.
+    local httpResponder = opts.http or function() return { status = 200, json = {} } end
 
     -- Registers default to zeros; a test can hand back real values instead.
     local registersFor = opts.registers or function(reqOpts)
@@ -156,10 +156,20 @@ function M.install(opts)
     end
 
     function Plugin:basicAuth(user, pass) return "Basic " .. tostring(user) .. ":" .. tostring(pass) end
+    function Plugin:bearerAuth(token) return "Bearer " .. tostring(token) end
 
+    -- Same contract as PluginHelpers.httpRequest: a status outside 2xx sets
+    -- resp.err to "HTTP <status>", and resp.json is parsed only on success.
     function Plugin:httpRequest(reqOpts, cb)
         env.http[#env.http + 1] = reqOpts
-        if cb then cb(httpResponder(reqOpts)) end
+        local resp = httpResponder(reqOpts) or {}
+        resp.status = resp.status or resp.code or (resp.err and 0 or 200)
+        resp.ok = resp.status >= 200 and resp.status < 300
+        if not resp.ok then
+            resp.err = resp.err or ("HTTP " .. resp.status)
+            if (reqOpts.parseJson or "success") == "success" then resp.json = nil end
+        end
+        if cb then cb(resp) end
         return true
     end
 

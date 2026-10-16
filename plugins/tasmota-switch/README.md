@@ -86,7 +86,7 @@ local lamp = tasmota:create("192.168.1.100")
 - `lamp:setPolling(enabled, interval)` - włącz/wyłącz polling
 
 ### Eventy
-- `lamp:onChange(callback)` - callback przy zmianie stanu
+- `lamp:onChange(callback)` - callback przy zmianie stanu; zwraca funkcję, która go wyrejestrowuje
 
 ## Tasmota HTTP API
 

@@ -25,7 +25,7 @@
 
 local plugin = Plugin:new("tasmota-switch", {
     name = "Tasmota Switch",
-    version = "1.0.1",
+    version = "1.0.3",
     description = "Factory for Tasmota switch objects"
 })
 
@@ -295,8 +295,17 @@ function TasmotaSwitch:on_event(event, callback)
     if not self._eventHandlers[event] then
         self._eventHandlers[event] = {}
     end
-    table.insert(self._eventHandlers[event], callback)
-    return self
+    local handlers = self._eventHandlers[event]
+    table.insert(handlers, callback)
+    -- expose() keeps this and calls it on unexpose().
+    return function()
+        for i, cb in ipairs(handlers) do
+            if cb == callback then
+                table.remove(handlers, i)
+                return
+            end
+        end
+    end
 end
 
 function TasmotaSwitch:emit(event, ...)
