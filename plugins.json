@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-16T19:02:53Z",
+  "updated": "2026-10-16T21:36:22Z",
   "plugins": [
     {
       "id": "weather",
