@@ -14,9 +14,9 @@ local check = harness.check
 local env = harness.install({
     http = function(reqOpts)
         if tostring(reqOpts.url):find("Power") then
-            return { code = 200, json = { POWER = "ON" } }
+            return { status = 200, json = { POWER = "ON" } }
         end
-        return { code = 200, json = {} }
+        return { status = 200, json = {} }
     end
 })
 
@@ -67,6 +67,22 @@ check("a reachable switch is online", lamp:isOnline() == true)
 check("getId returns the configured id", lamp:getId() == "biurko")
 lamp:setName("Nowa nazwa")
 check("setName sticks", lamp._name == "Nowa nazwa")
+
+--------------------------------------------------------------------------------
+-- EXPOSE CONTRACT
+--
+-- expose() keeps what onChange returns and calls it on unexpose(); anything
+-- but a function leaves the callback registered and logs a warning.
+--------------------------------------------------------------------------------
+
+local seen = 0
+local unsubscribe = lamp:onChange(function() seen = seen + 1 end)
+check("onChange returns an unsubscribe function", type(unsubscribe) == "function")
+lamp:_updateState({ POWER = "OFF" })
+check("the callback hears a change", seen == 1)
+unsubscribe()
+lamp:_updateState({ POWER = "ON" })
+check("after unsubscribe it hears nothing", seen == 1)
 
 --------------------------------------------------------------------------------
 -- POLLING AND CLEANUP
