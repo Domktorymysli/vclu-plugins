@@ -1,0 +1,8 @@
+{
+  "id": "@vclu/musiccast",
+  "name": "Yamaha MusicCast",
+  "version": "0.1.0",
+  "description": "Factory for Yamaha MusicCast devices over the local YXC API",
+  "author": "vCLU",
+  "config": {}
+}
