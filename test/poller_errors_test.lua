@@ -83,11 +83,9 @@ do
     check("tasmota-switch: has a poller to tick", ticked > 0)
 end
 
--- Spotify and MusicCast are factories too. Spotify polls only once
--- authorized, so its account gets a refresh token up front.
+-- MusicCast is a factory too.
 local factories = {
     { name = "musiccast", opts = { id = "salon", ip = "127.0.0.1" } },
-    { name = "spotify", opts = { id = "dom", clientId = "c", clientSecret = "s", refreshToken = "rt" } },
 }
 for _, f in ipairs(factories) do
     print("== " .. f.name)
