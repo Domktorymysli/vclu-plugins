@@ -232,6 +232,25 @@
         "vclu": ">=1.0.0"
       },
       "tag": "musiccast-v0.1.1"
+    },
+    {
+      "id": "influx-metrics",
+      "name": "InfluxDB Metrics",
+      "version": "1.1.2",
+      "description": "Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics (line protocol)",
+      "author": "vCLU Team",
+      "path": "plugins/influx-metrics",
+      "tags": [
+        "metrics",
+        "influxdb",
+        "telegraf",
+        "victoriametrics",
+        "factory"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      },
+      "tag": "influx-metrics-v1.1.2"
     }
   ]
 }

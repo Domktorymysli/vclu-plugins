@@ -22,7 +22,7 @@ handle any number of them.
 | [solax](plugins/solax/) | SolaX inverter, read locally through the Solarman LSW-3 WiFi dongle | config |
 | [frigate](plugins/frigate/) | Frigate NVR: object detection, camera status, events | config |
 | [modbus-gateway](plugins/modbus-gateway/) | Modbus RTU devices behind RS485-Ethernet gateways (Waveshare, USR, Elfin) | factory |
-| [influx-metrics](plugins/influx-metrics/) | Sends metrics to InfluxDB, Telegraf or VictoriaMetrics | factory ¹ |
+| [influx-metrics](plugins/influx-metrics/) | Sends metrics to InfluxDB, Telegraf or VictoriaMetrics | factory |
 | [musiccast](plugins/musiccast/) | Yamaha MusicCast receivers and speakers through their local API | factory |
 | [spotify](plugins/spotify/) | Spotify playback through the Web API (Premium) | factory |
 | [tasmota-switch](plugins/tasmota-switch/) | Tasmota switches (Sonoff and others) over HTTP | factory ¹ |
