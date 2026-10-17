@@ -1,6 +1,6 @@
 # vclu-plugins
 
-Plugins for vCLU, one directory per plugin under `plugins/`. Read `README.md`
+Plugins for vCLU, one directory per plugin under `plugins/`. Read `DEVELOPMENT.md`
 before writing one, especially:
 
 - **Factory Plugins**: a device plugin is `create(opts)`, not `config`; the
@@ -16,4 +16,5 @@ A new plugin needs its own entry in `plugins.json` (id, name, version, path,
 tags), with the same short id as its `plugin.json` (`musiccast`, not
 `@vclu/musiccast`); the tag workflow matches the two by id. After a merge, `.github/workflows/tag-plugins.yml` tags every version
 bump and syncs `version` and `tag` into the existing entries, so leave those
-two fields to it.
+two fields to it. Add the plugin to the table in both `README.md` and
+`README.pl.md` too.
