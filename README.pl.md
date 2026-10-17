@@ -23,7 +23,6 @@ w Twoim kodzie przez `create()`, więc jeden plugin obsłuży ich dowolnie wiele
 | [modbus-gateway](plugins/modbus-gateway/) | Urządzenia Modbus RTU za bramkami RS485-Ethernet (Waveshare, USR, Elfin) | fabryka |
 | [influx-metrics](plugins/influx-metrics/) | Wysyła metryki do InfluxDB, Telegrafa albo VictoriaMetrics | fabryka |
 | [musiccast](plugins/musiccast/) | Amplitunery i głośniki Yamaha MusicCast przez ich lokalne API | fabryka |
-| [spotify](plugins/spotify/) | Sterowanie Spotify przez Web API (Premium) | fabryka |
 | [tasmota-switch](plugins/tasmota-switch/) | Przełączniki Tasmota (Sonoff i inne) przez HTTP | fabryka ¹ |
 
 ¹ Jeszcze nie ma go w `plugins.json`, więc panel go nie pokazuje.
