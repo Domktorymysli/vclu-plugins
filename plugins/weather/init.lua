@@ -37,9 +37,120 @@ local state = {
 
 local poller = nil
 
+-- Forecast: fetched only once someone asks for it, then every 30 minutes.
+local FORECAST_INTERVAL = 30 * 60
+local forecast = nil
+local forecastPoller = nil
+local settings = nil
+
+--------------------------------------------------------------------------------
+-- ICONS
+--------------------------------------------------------------------------------
+
+--- Bootstrap Icons name for an OWM condition id; night variants for clear sky.
+local function iconFor(id, night)
+    id = tonumber(id) or 0
+    if id >= 200 and id < 300 then
+        if id >= 210 and id <= 221 then return "cloud-lightning" end
+        return "cloud-lightning-rain"
+    elseif id >= 300 and id < 400 then return "cloud-drizzle"
+    elseif id == 511 or (id >= 611 and id <= 616) then return "cloud-sleet"
+    elseif id >= 502 and id <= 504 or id == 522 then return "cloud-rain-heavy"
+    elseif id >= 500 and id < 600 then return "cloud-rain"
+    elseif id >= 600 and id < 700 then return "cloud-snow"
+    elseif id == 701 or id == 741 then return "cloud-fog2"
+    elseif id == 771 then return "wind"
+    elseif id == 781 then return "tornado"
+    elseif id >= 700 and id < 800 then return "cloud-haze2"
+    elseif id == 800 then return night and "moon" or "sun"
+    elseif id == 801 or id == 802 then return night and "cloud-moon" or "cloud-sun"
+    elseif id == 804 then return "clouds"
+    end
+    return "cloud"
+end
+
+-- How much a step should win the day's icon over the midday one.
+local function severity(id)
+    id = tonumber(id) or 0
+    if id >= 200 and id < 300 then return 5 end
+    if (id >= 600 and id < 700) or id == 511 or (id >= 502 and id <= 504) or id == 522 then return 4 end
+    if id >= 500 and id < 600 then return 3 end
+    if id >= 300 and id < 400 then return 2 end
+    return 0
+end
+
 --------------------------------------------------------------------------------
 -- HELPERS
 --------------------------------------------------------------------------------
+
+local function round(x, places)
+    local m = 10 ^ (places or 0)
+    return math.floor(x * m + 0.5) / m
+end
+
+local function precip(t)
+    return t and tonumber(t["3h"]) or 0
+end
+
+--- Local date ("YYYY-MM-DD") and hour of a timestamp. The house's zone from
+-- datetime.setTimezone when the runtime gives plugins datetime; else the
+-- city's UTC offset from OWM, which is fixed and misses a DST change.
+local function localTime(ts, offset)
+    if datetime and datetime.timezone and datetime.timezone() ~= "" then
+        local t = datetime.fromTimestamp(ts)
+        return t.date, t.hour
+    end
+    local t = os.date("!*t", math.floor(ts + (offset or 0)))
+    return string.format("%04d-%02d-%02d", t.year, t.month, t.day), t.hour
+end
+
+--- /data/2.5/forecast (3 h steps) -> { days, hours, updated }.
+local function parseForecast(json)
+    if not json or type(json.list) ~= "table" then
+        return nil, "Invalid response: missing list"
+    end
+    local offset = json.city and tonumber(json.city.timezone) or 0
+    local days, hours, byDate = {}, {}, {}
+
+    for _, step in ipairs(json.list) do
+        local ts = tonumber(step.dt)
+        local temp = step.main and tonumber(step.main.temp)
+        if ts and temp then
+            local w = step.weather and step.weather[1] or {}
+            local rain = precip(step.rain) + precip(step.snow)
+            hours[#hours + 1] = {
+                at = ts, temp = temp, rain = rain,
+                icon = iconFor(w.id, step.sys and step.sys.pod == "n")
+            }
+
+            local date, hour = localTime(ts, offset)
+            local day = byDate[date]
+            if not day then
+                day = { date = date, min = temp, max = temp, rain = 0, pop = 0 }
+                byDate[date] = day
+                days[#days + 1] = day
+            end
+            day.min = math.min(day.min, temp)
+            day.max = math.max(day.max, temp)
+            day.rain = day.rain + rain
+            day.pop = math.max(day.pop, tonumber(step.pop) or 0)
+
+            -- Icon: a daytime step first, the worst weather, then nearest noon.
+            local rank = ((hour >= 6 and hour <= 20) and 1000 or 0)
+                + severity(w.id) * 100 - math.abs(hour - 12)
+            if not day._rank or rank > day._rank then
+                day._rank = rank
+                day.icon = iconFor(w.id, false)
+            end
+        end
+    end
+
+    for _, day in ipairs(days) do
+        day._rank = nil
+        day.rain = round(day.rain, 2)
+    end
+    return { days = days, hours = hours, updated = os.time() }
+end
 
 local function parseResponse(json)
     if not json or not json.main then
@@ -53,7 +164,8 @@ local function parseResponse(json)
         pressure = weather:coerceNumber(json.main.pressure, 0),
         condition = json.weather and json.weather[1] and json.weather[1].main or "Unknown",
         description = json.weather and json.weather[1] and json.weather[1].description or "",
-        icon = json.weather and json.weather[1] and json.weather[1].icon or "",
+        icon = json.weather and json.weather[1] and iconFor(json.weather[1].id,
+            tostring(json.weather[1].icon or ""):sub(-1) == "n") or "",
         windSpeed = json.wind and weather:coerceNumber(json.wind.speed, 0) or 0,
         windDeg = json.wind and weather:coerceNumber(json.wind.deg, 0) or 0,
         clouds = json.clouds and weather:coerceNumber(json.clouds.all, 0) or 0,
@@ -78,6 +190,7 @@ weather:onInit(function(config)
     local interval = weather:coerceNumber(config.interval, 3600)
 
     weather:log("info", "Initializing for city: " .. city)
+    settings = { apiKey = config.apiKey, city = city, units = units }
 
     -- Create initial registry object
     weather:upsertObject("current", {
@@ -85,6 +198,7 @@ weather:onInit(function(config)
         temp = 0,
         humidity = 0,
         condition = "",
+        icon = "",
         pressure = 0,
         wind = 0,
         rain = 0,
@@ -151,6 +265,7 @@ weather:onInit(function(config)
                     temp = data.temp,
                     humidity = data.humidity,
                     condition = data.condition,
+                    icon = data.icon,
                     pressure = data.pressure,
                     wind = data.windSpeed,
                     rain = data.rain,
@@ -198,6 +313,10 @@ end)
 weather:onCleanup(function()
     if poller then
         poller:stop()
+    end
+    if forecastPoller then
+        forecastPoller:stop()
+        forecastPoller = nil
     end
     weather:log("info", "Weather plugin stopped")
 end)
@@ -255,6 +374,7 @@ function weather:getData()
         pressure = state.pressure,
         condition = state.condition,
         description = state.description,
+        icon = state.icon,
         windSpeed = state.windSpeed,
         windDeg = state.windDeg,
         clouds = state.clouds,
@@ -263,6 +383,48 @@ function weather:getData()
         lastUpdate = state.lastUpdate,
         lastError = state.lastError
     }
+end
+
+local function startForecast()
+    if forecastPoller or not settings then return end
+    forecastPoller = weather:poller("forecast", {
+        interval = FORECAST_INTERVAL * 1000,
+        immediate = true,
+        timeout = 10000,
+        retry = { maxAttempts = 3, backoff = 2000 },
+
+        onTick = function(done)
+            local url = weather:url("https://api.openweathermap.org/data/2.5/forecast", {
+                appid = settings.apiKey,
+                q = settings.city,
+                units = settings.units
+            })
+            weather:httpRequest({ url = url, timeout = 10000, parseJson = "success" }, function(resp)
+                if resp.err then
+                    done(nil, resp.err)
+                    return
+                end
+                local data, parseErr = parseForecast(resp.json)
+                if not data then
+                    done(nil, parseErr or "Parse error")
+                    return
+                end
+                forecast = data
+                done()
+            end)
+        end,
+
+        onError = function(err)
+            weather:log("error", "Forecast fetch failed: " .. tostring(err))
+        end
+    })
+    forecastPoller:start()
+end
+
+--- 5-day forecast, nil until the first fetch. The first call starts fetching.
+function weather:getForecast()
+    startForecast()
+    return forecast
 end
 
 function weather:refresh()
