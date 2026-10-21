@@ -69,10 +69,12 @@ local function iconFor(id, night)
     return "cloud"
 end
 
--- How much a step should win the day's icon over the midday one.
-local function severity(id)
+-- How much a step should win the day's icon over the midday one. Rain or snow
+-- counts only when likely and not trace (pop >= 0.4, >= 0.3 mm); thunder always.
+local function severity(id, pop, rain)
     id = tonumber(id) or 0
     if id >= 200 and id < 300 then return 5 end
+    if pop < 0.4 or rain < 0.3 then return 0 end
     if (id >= 600 and id < 700) or id == 511 or (id >= 502 and id <= 504) or id == 522 then return 4 end
     if id >= 500 and id < 600 then return 3 end
     if id >= 300 and id < 400 then return 2 end
@@ -133,11 +135,12 @@ local function parseForecast(json)
             day.min = math.min(day.min, temp)
             day.max = math.max(day.max, temp)
             day.rain = day.rain + rain
-            day.pop = math.max(day.pop, tonumber(step.pop) or 0)
+            local pop = tonumber(step.pop) or 0
+            day.pop = math.max(day.pop, pop)
 
             -- Icon: a daytime step first, the worst weather, then nearest noon.
             local rank = ((hour >= 6 and hour <= 20) and 1000 or 0)
-                + severity(w.id) * 100 - math.abs(hour - 12)
+                + severity(w.id, pop, rain) * 100 - math.abs(hour - 12)
             if not day._rank or rank > day._rank then
                 day._rank = rank
                 day.icon = iconFor(w.id, false)

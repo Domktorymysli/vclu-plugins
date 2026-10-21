@@ -171,11 +171,11 @@ end
 |---|---|
 | `days[].date` | data `YYYY-MM-DD` w strefie domu |
 | `days[].min`, `max` | najniższa i najwyższa temperatura z kroków dnia (°C, °F dla `imperial`) |
-| `days[].rain` | suma opadu z dnia w mm (deszcz i śnieg) |
+| `days[].rain` | suma opadów z dnia w mm: deszcz i śnieg razem, mimo nazwy pola |
 | `days[].pop` | największe prawdopodobieństwo opadu z dnia, 0-1 |
-| `days[].icon` | ikona dnia: najgorsza pogoda w dzień (6-20), a bez opadów krok najbliższy południa |
+| `days[].icon` | ikona dnia: krok w dzień (6-20) ze znaczącymi opadami (prawdopodobieństwo ≥ 0,4 i ≥ 0,3 mm; burza zawsze), najgorszy z nich; bez takich kroków krok najbliższy południa |
 | `hours[].at` | początek kroku, unix (s) |
-| `hours[].temp`, `rain`, `icon` | temperatura, opad w mm za 3 h, ikona (nocą `moon`, `cloud-moon`) |
+| `hours[].temp`, `rain`, `icon` | temperatura, opady (deszcz i śnieg) w mm za 3 h, ikona (nocą `moon`, `cloud-moon`) |
 
 Ikony to nazwy z [Bootstrap Icons](https://icons.getbootstrap.com/): `sun`, `moon`,
 `cloud-sun`, `cloud-moon`, `cloud`, `clouds`, `cloud-drizzle`, `cloud-rain`,

@@ -15,10 +15,10 @@ local DST_END = 1792890000 -- 2026-10-25 01:00 UTC, Warsaw goes from +2 to +1
 -- /data/2.5/forecast for Warsaw, fetched on 2026-10-23 evening (city.timezone
 -- is still +7200). Rows: UTC hour, temp, condition id, pod, pop, rain, snow.
 local ROWS = {
-    -- 2026-10-24: sunny noon, fog in the morning
+    -- 2026-10-24: sunny noon, fog in the morning, light drizzle at 20:00
     { 0, 6.1, 800, "n", 0, 0 }, { 3, 5.2, 800, "n", 0, 0 }, { 6, 5.0, 701, "d", 0, 0 },
     { 9, 11.4, 800, "d", 0, 0 }, { 12, 14.8, 803, "d", 0, 0 }, { 15, 12.9, 802, "d", 0.05, 0 },
-    { 18, 9.3, 801, "n", 0, 0 }, { 21, 7.7, 800, "n", 0, 0 },
+    { 18, 9.3, 300, "d", 0.3, 0.1 }, { 21, 7.7, 801, "n", 0, 0 },
     -- 2026-10-25: DST ends at 01:00 UTC; 09 UTC is 10:00 local, 12 UTC is 13:00
     { 0, 6.9, 802, "n", 0, 0 }, { 3, 6.0, 803, "n", 0, 0 }, { 6, 6.4, 803, "d", 0, 0 },
     { 9, 10.2, 801, "d", 0.1, 0 }, { 12, 12.6, 804, "d", 0.1, 0 }, { 15, 11.1, 804, "d", 0.15, 0 },
@@ -29,10 +29,10 @@ local ROWS = {
     { 18, 9.1, 500, "n", 0.6, 0.4 }, { 21, 8.7, 500, "n", 0.5, 0.3 },
     -- 2026-10-27: heavy rain at night, drizzle by day
     { 0, 8.2, 501, "n", 0.9, 2.1 }, { 3, 7.8, 502, "n", 1, 5.0 }, { 6, 7.5, 804, "d", 0.7, 0 },
-    { 9, 8.9, 300, "d", 0.5, 0.2 }, { 12, 9.6, 804, "d", 0.3, 0 }, { 15, 9.0, 804, "d", 0.2, 0 },
+    { 9, 8.9, 300, "d", 0.5, 0.4 }, { 12, 9.6, 804, "d", 0.3, 0 }, { 15, 9.0, 804, "d", 0.2, 0 },
     { 18, 6.5, 803, "n", 0.1, 0 }, { 21, 4.9, 802, "n", 0, 0 },
     -- 2026-10-28: wet snow in the morning
-    { 0, 2.3, 804, "n", 0.2, 0 }, { 3, 0.8, 804, "n", 0.25, 0 }, { 6, 0.4, 600, "d", 0.3, 0, 0.5 },
+    { 0, 2.3, 804, "n", 0.2, 0 }, { 3, 0.8, 804, "n", 0.25, 0 }, { 6, 0.4, 600, "d", 0.5, 0, 0.5 },
     { 9, 2.1, 804, "d", 0.2, 0 }, { 12, 3.6, 804, "d", 0.1, 0 }, { 15, 3.0, 803, "d", 0, 0 },
     { 18, 1.2, 800, "n", 0, 0 }, { 21, -0.4, 800, "n", 0, 0 },
 }
@@ -141,7 +141,7 @@ check("a step has at, temp, rain and icon", f.hours[1].at == T0 and f.hours[1].t
 check("steps are 3 h apart", f.hours[40].at == T0 + 39 * 3 * 3600)
 check("a step's rain is rain plus snow", f.hours[23].rain == 0.4 and f.hours[35].rain == 0.5)
 check("night and day icons per step", f.hours[2].icon == "moon" and f.hours[4].icon == "sun"
-      and f.hours[3].icon == "cloud-fog2" and f.hours[7].icon == "cloud-moon")
+      and f.hours[3].icon == "cloud-fog2" and f.hours[8].icon == "cloud-moon" and f.hours[7].icon == "cloud-drizzle")
 
 local dates = {}
 for i, d in ipairs(f.days) do dates[i] = d.date end
@@ -154,14 +154,14 @@ local d24, d25, d26, d27, d28 = day("2026-10-24"), day("2026-10-25"), day("2026-
     day("2026-10-27"), day("2026-10-28")
 
 check("min and max of the day's steps", d24.min == 5.0 and d24.max == 14.8)
-check("a dry day has no rain", d24.rain == 0 and d24.pop == 0.05)
-check("a sunny noon wins over morning fog", d24.icon == "sun")
+check("light drizzle is in the sum and pop", d24.rain == 0.1 and d24.pop == 0.3)
+check("a sunny noon wins over morning fog and light drizzle at 20:00", d24.icon == "sun")
 check("after the DST change the noon step is 12 UTC (13:00 CET)", d25.icon == "clouds")
 check("the DST day keeps its 8 steps", d25.min == 6.0 and d25.max == 12.6)
 check("rain is summed over the day", d26.rain == 1.9)
 check("pop is the day's highest", d26.pop == 0.8)
 check("afternoon rain wins over a cloudy noon", d26.icon == "cloud-rain")
-check("night rain counts in the sum", d27.rain == 7.3 and d27.pop == 1)
+check("night rain counts in the sum", d27.rain == 7.5 and d27.pop == 1)
 check("daytime weather sets the icon, not the night", d27.icon == "cloud-drizzle")
 check("snow counts as precipitation", d28.rain == 0.5 and d28.icon == "cloud-snow")
 check("a frosty night is the minimum", d28.min == -0.4)
@@ -195,6 +195,29 @@ env.tick("forecast")
 f = weather:getForecast()
 check("at +3 h the 21 UTC step is the next local day",
       #f.days == 2 and f.days[2].date == "2026-10-25" and f.days[2].min == 2)
+
+--------------------------------------------------------------------------------
+-- SIGNIFICANT PRECIPITATION
+--------------------------------------------------------------------------------
+
+local function iconsOf(rows)
+    answers.forecast = { status = 200, json = forecastJson(rows) }
+    env.tick("forecast")
+    return weather:getForecast().days[1].icon
+end
+local dryNoon = { { 0, 5, 800, "n", 0, 0 }, { 3, 5, 800, "n", 0, 0 }, { 6, 6, 800, "d", 0, 0 },
+                  { 9, 9, 800, "d", 0, 0 }, { 12, 11, 800, "d", 0, 0 } }
+local function with(row)
+    local rows = {}
+    for i, r in ipairs(dryNoon) do rows[i] = r end
+    rows[#rows + 1] = row
+    return rows
+end
+check("likely but trace rain keeps the sun", iconsOf(with({ 15, 10, 500, "d", 0.9, 0.2 })) == "sun")
+check("enough but unlikely rain keeps the sun", iconsOf(with({ 15, 10, 500, "d", 0.3, 2.0 })) == "sun")
+check("pop 0.4 and 0.3 mm is significant", iconsOf(with({ 15, 10, 500, "d", 0.4, 0.3 })) == "cloud-rain")
+check("thunder always counts", iconsOf(with({ 15, 10, 211, "d", 0.1, 0 })) == "cloud-lightning")
+f = weather:getForecast()
 
 --------------------------------------------------------------------------------
 -- ERRORS
