@@ -9,6 +9,9 @@ local check = harness.check
 
 local function ok(json) return { status = 200, ok = true, json = json } end
 
+-- getPlayInfo answered for 192.168.0.50; the artwork tests swap it.
+local playInfo = {}
+
 -- YXC answers every call with response_code; 0 is success.
 local env = harness.install({
     http = function(req)
@@ -22,6 +25,9 @@ local env = harness.install({
         if url:find("/getStatus$") then
             return ok({ response_code = 0, power = "on", volume = 80, max_volume = 160,
                         mute = false, input = "net_radio" })
+        end
+        if url:find("192%.168%.0%.50/.*/netusb/getPlayInfo$") then
+            return ok(playInfo)
         end
         if url:find("/netusb/getPlayInfo$") then
             return ok({ response_code = 0, playback = "play", artist = "Trójka",
@@ -102,6 +108,76 @@ check("a second zone talks to its own path", last().url:find("/v1/zone2/setPower
 local dead = plugin:create({ id = "martwy", ip = "192.168.0.99", polling = false })
 dead:refresh()
 check("an unreachable device is offline", dead:isOnline() == false)
+
+--------------------------------------------------------------------------------
+-- ARTWORK
+--
+-- Recorded shapes of getPlayInfo. The receiver serves the cover from one path
+-- for every track; Spotify and some services hand out an absolute URL.
+--------------------------------------------------------------------------------
+
+local PLAYINFO = {
+    net_radio = {
+        response_code = 0, input = "net_radio", playback = "play", ["repeat"] = "off",
+        shuffle = "off", play_time = 0, total_time = 0,
+        artist = "", album = "Polskie Radio Trójka", track = "Lista Przebojów",
+        albumart_url = "/YamahaRemoteControl/AlbumART/AlbumART3121.jpg",
+        albumart_id = 3121, usb_devicetype = "unknown", auto_stopped = false, attribute = 1
+    },
+    spotify = {
+        response_code = 0, input = "spotify", playback = "play", ["repeat"] = "all",
+        shuffle = "on", play_time = 74, total_time = 241,
+        artist = "Daft Punk", album = "Discovery", track = "One More Time",
+        albumart_url = "/YamahaRemoteControl/AlbumART/AlbumART.jpg",
+        albumart_id = 5501, usb_devicetype = "unknown", auto_stopped = false, attribute = 4294967295
+    },
+    server = {
+        response_code = 0, input = "server", playback = "play", ["repeat"] = "off",
+        shuffle = "off", play_time = 12, total_time = 305,
+        artist = "Kult", album = "Spokojnie", track = "Arahja",
+        albumart_url = "YamahaRemoteControl/AlbumART/AlbumART.jpg",
+        albumart_id = 7, usb_devicetype = "unknown", auto_stopped = false, attribute = 1
+    },
+    bluetooth = {
+        response_code = 0, input = "bluetooth", playback = "stop",
+        artist = "", album = "", track = "", albumart_url = "", albumart_id = 0
+    },
+    deezer = {
+        response_code = 0, input = "deezer", playback = "play",
+        artist = "Kult", album = "Spokojnie", track = "Arahja",
+        albumart_url = "https://e-cdns-images.dzcdn.net/images/cover/abc123/500x500.jpg"
+    }
+}
+
+local box = plugin:create({ id = "box", ip = "192.168.0.50", polling = false })
+local function artworkFor(name)
+    playInfo = PLAYINFO[name]
+    box:refresh()
+    return box:getTrack().artwork
+end
+
+local radio = artworkFor("net_radio")
+check("a device path becomes an absolute URL on the device",
+      radio and radio:find("^http://192%.168%.0%.50/YamahaRemoteControl/AlbumART/AlbumART3121%.jpg%?t=%x+$"))
+check("getState carries the artwork", box:getState().track.artwork == radio)
+
+local spotify = artworkFor("spotify")
+check("spotify cover is served from the device", spotify and spotify:find("^http://192%.168%.0%.50/YamahaRemoteControl/AlbumART/AlbumART%.jpg%?t="))
+check("the same track keeps the same URL across polls", artworkFor("spotify") == spotify)
+
+local server = artworkFor("server")
+check("a path without a leading slash still gets one", server and server:find("^http://192%.168%.0%.50/YamahaRemoteControl/"))
+check("another track on the same path gets another URL", server ~= spotify)
+
+check("an empty albumart_url is no artwork", artworkFor("bluetooth") == nil)
+check("the track is still read without artwork", box:getTrack().input == "bluetooth")
+
+check("an absolute URL is kept as is",
+      artworkFor("deezer") == "https://e-cdns-images.dzcdn.net/images/cover/abc123/500x500.jpg")
+
+playInfo = { response_code = 0, input = "net_radio", playback = "play" }
+box:refresh()
+check("a reply without albumart_url is no artwork", box:getTrack().artwork == nil)
 
 --------------------------------------------------------------------------------
 -- NOT EXPOSABLE AND CLEANUP

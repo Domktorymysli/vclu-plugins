@@ -47,3 +47,33 @@ Głośność w API wtyczki to zawsze procent; wtyczka przelicza go na skalę urz
 
 Opcje `create`: `id` (domyślnie ip), `ip`, `name`, `zone` (`main`, `zone2`, ...),
 `polling` (domyślnie `true`), `pollInterval` (s, domyślnie 10).
+
+## Stan
+
+`getState()` zwraca stan z ostatniego odczytu (`getStatus` i `netusb/getPlayInfo`):
+
+| Pole | Typ | Opis |
+|---|---|---|
+| `id`, `name`, `ip`, `zone` | string | z `create` |
+| `power` | boolean | strefa włączona |
+| `volume` | number | 0-100, procent zakresu urządzenia |
+| `mute` | boolean | wyciszenie |
+| `input` | string | wejście strefy |
+| `playback` | string | `play`, `pause`, `stop`, ... |
+| `track` | table | utwór, to samo co `getTrack()`; `nil` przed pierwszym odczytem |
+| `online` | boolean | urządzenie odpowiada |
+| `lastError` | string | ostatni błąd albo `nil` |
+
+`track`:
+
+| Pole | Typ | Opis |
+|---|---|---|
+| `artist`, `title`, `album` | string | pusty napis, gdy usługa ich nie podaje |
+| `input` | string | źródło odtwarzania (`net_radio`, `spotify`, `server`, ...) |
+| `artwork` | string | adres okładki albo `nil`, gdy jej nie ma |
+
+Amplituner podaje okładkę jako ścieżkę na sobie, zwykle tę samą dla każdego
+utworu. Wtyczka składa z niej pełny adres `http://<ip><ścieżka>?t=<skrót>`, gdzie
+skrót zależy od wykonawcy, tytułu i albumu: przeglądarka pobiera okładkę na nowo
+po zmianie utworu, a nie przy każdym odczycie. Pełny adres (`http://`, `https://`)
+od usługi zostaje bez zmian.

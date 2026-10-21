@@ -114,14 +114,33 @@ function MusicCast:_updateStatus(json)
     if json.input then self._input = json.input end
 end
 
+-- Short hash of a string, for the artwork cache-buster.
+local function hash(s)
+    local h = 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 2147483647 end
+    return string.format("%x", h)
+end
+
+-- albumart_url is a path on the device, the same for every track, so the
+-- track goes into the query; an absolute URL (some net services) stays as is.
+function MusicCast:_artworkUrl(art, track)
+    if type(art) ~= "string" or art == "" then return nil end
+    if art:lower():find("^https?://") then return art end
+    if art:sub(1, 1) ~= "/" then art = "/" .. art end
+    local key = hash(track.artist .. "|" .. track.title .. "|" .. track.album)
+    return "http://" .. self._ip .. art .. (art:find("?", 1, true) and "&" or "?") .. "t=" .. key
+end
+
 function MusicCast:_updatePlayInfo(json)
     self._playback = json.playback
-    self._track = {
+    local track = {
         artist = json.artist or "",
         title = json.track or "",
         album = json.album or "",
         input = json.input
     }
+    track.artwork = self:_artworkUrl(json.albumart_url, track)
+    self._track = track
 end
 
 function MusicCast:_startPolling()
