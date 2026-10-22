@@ -28,6 +28,7 @@ local state = {
     condition = "",
     description = "",
     icon = "",
+    iconName = "",
     windSpeed = 0,
     windDeg = 0,
     clouds = 0,
@@ -42,6 +43,7 @@ local FORECAST_INTERVAL = 30 * 60
 local forecast = nil
 local forecastPoller = nil
 local settings = nil
+local missingKey = false
 
 --------------------------------------------------------------------------------
 -- ICONS
@@ -120,9 +122,10 @@ local function parseForecast(json)
         if ts and temp then
             local w = step.weather and step.weather[1] or {}
             local rain = precip(step.rain) + precip(step.snow)
+            local night = step.sys and step.sys.pod == "n"
             hours[#hours + 1] = {
                 at = ts, temp = temp, rain = rain,
-                icon = iconFor(w.id, step.sys and step.sys.pod == "n")
+                iconName = iconFor(w.id, night)
             }
 
             local date, hour = localTime(ts, offset)
@@ -143,7 +146,7 @@ local function parseForecast(json)
                 + severity(w.id, pop, rain) * 100 - math.abs(hour - 12)
             if not day._rank or rank > day._rank then
                 day._rank = rank
-                day.icon = iconFor(w.id, false)
+                day.iconName = iconFor(w.id, night)
             end
         end
     end
@@ -167,7 +170,8 @@ local function parseResponse(json)
         pressure = weather:coerceNumber(json.main.pressure, 0),
         condition = json.weather and json.weather[1] and json.weather[1].main or "Unknown",
         description = json.weather and json.weather[1] and json.weather[1].description or "",
-        icon = json.weather and json.weather[1] and iconFor(json.weather[1].id,
+        icon = json.weather and json.weather[1] and json.weather[1].icon or "",
+        iconName = json.weather and json.weather[1] and iconFor(json.weather[1].id,
             tostring(json.weather[1].icon or ""):sub(-1) == "n") or "",
         windSpeed = json.wind and weather:coerceNumber(json.wind.speed, 0) or 0,
         windDeg = json.wind and weather:coerceNumber(json.wind.deg, 0) or 0,
@@ -185,6 +189,7 @@ weather:onInit(function(config)
     -- Config validation
     if not config.apiKey or config.apiKey == "" then
         weather:log("error", "apiKey is required")
+        missingKey = true
         return
     end
 
@@ -201,7 +206,7 @@ weather:onInit(function(config)
         temp = 0,
         humidity = 0,
         condition = "",
-        icon = "",
+        iconName = "",
         pressure = 0,
         wind = 0,
         rain = 0,
@@ -256,6 +261,7 @@ weather:onInit(function(config)
                 state.condition = data.condition
                 state.description = data.description
                 state.icon = data.icon
+                state.iconName = data.iconName
                 state.windSpeed = data.windSpeed
                 state.windDeg = data.windDeg
                 state.clouds = data.clouds
@@ -268,7 +274,7 @@ weather:onInit(function(config)
                     temp = data.temp,
                     humidity = data.humidity,
                     condition = data.condition,
-                    icon = data.icon,
+                    iconName = data.iconName,
                     pressure = data.pressure,
                     wind = data.windSpeed,
                     rain = data.rain,
@@ -321,6 +327,8 @@ weather:onCleanup(function()
         forecastPoller:stop()
         forecastPoller = nil
     end
+    settings = nil
+    forecast = nil
     weather:log("info", "Weather plugin stopped")
 end)
 
@@ -378,6 +386,7 @@ function weather:getData()
         condition = state.condition,
         description = state.description,
         icon = state.icon,
+        iconName = state.iconName,
         windSpeed = state.windSpeed,
         windDeg = state.windDeg,
         clouds = state.clouds,
@@ -389,6 +398,10 @@ function weather:getData()
 end
 
 local function startForecast()
+    if missingKey then
+        weather:log("warn", "getForecast: apiKey is missing, no forecast")
+        missingKey = false -- warn once
+    end
     if forecastPoller or not settings then return end
     forecastPoller = weather:poller("forecast", {
         interval = FORECAST_INTERVAL * 1000,

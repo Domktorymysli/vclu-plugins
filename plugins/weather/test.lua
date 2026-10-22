@@ -137,11 +137,11 @@ check("getForecast returns the forecast", type(f) == "table")
 check("updated is a timestamp", type(f.updated) == "number" and f.updated > 0)
 check("40 hourly steps", #f.hours == 40)
 check("a step has at, temp, rain and icon", f.hours[1].at == T0 and f.hours[1].temp == 6.1
-      and f.hours[1].rain == 0 and f.hours[1].icon == "moon")
+      and f.hours[1].rain == 0 and f.hours[1].iconName == "moon" and f.hours[1].icon == nil)
 check("steps are 3 h apart", f.hours[40].at == T0 + 39 * 3 * 3600)
 check("a step's rain is rain plus snow", f.hours[23].rain == 0.4 and f.hours[35].rain == 0.5)
-check("night and day icons per step", f.hours[2].icon == "moon" and f.hours[4].icon == "sun"
-      and f.hours[3].icon == "cloud-fog2" and f.hours[8].icon == "cloud-moon" and f.hours[7].icon == "cloud-drizzle")
+check("night and day icons per step", f.hours[2].iconName == "moon" and f.hours[4].iconName == "sun"
+      and f.hours[3].iconName == "cloud-fog2" and f.hours[8].iconName == "cloud-moon" and f.hours[7].iconName == "cloud-drizzle")
 
 local dates = {}
 for i, d in ipairs(f.days) do dates[i] = d.date end
@@ -155,19 +155,19 @@ local d24, d25, d26, d27, d28 = day("2026-10-24"), day("2026-10-25"), day("2026-
 
 check("min and max of the day's steps", d24.min == 5.0 and d24.max == 14.8)
 check("light drizzle is in the sum and pop", d24.rain == 0.1 and d24.pop == 0.3)
-check("a sunny noon wins over morning fog and light drizzle at 20:00", d24.icon == "sun")
-check("after the DST change the noon step is 12 UTC (13:00 CET)", d25.icon == "clouds")
+check("a sunny noon wins over morning fog and light drizzle at 20:00", d24.iconName == "sun")
+check("after the DST change the noon step is 12 UTC (13:00 CET)", d25.iconName == "clouds")
 check("the DST day keeps its 8 steps", d25.min == 6.0 and d25.max == 12.6)
 check("rain is summed over the day", d26.rain == 1.9)
 check("pop is the day's highest", d26.pop == 0.8)
-check("afternoon rain wins over a cloudy noon", d26.icon == "cloud-rain")
+check("afternoon rain wins over a cloudy noon", d26.iconName == "cloud-rain")
 check("night rain counts in the sum", d27.rain == 7.5 and d27.pop == 1)
-check("daytime weather sets the icon, not the night", d27.icon == "cloud-drizzle")
-check("snow counts as precipitation", d28.rain == 0.5 and d28.icon == "cloud-snow")
+check("daytime weather sets the icon, not the night", d27.iconName == "cloud-drizzle")
+check("snow counts as precipitation", d28.rain == 0.5 and d28.iconName == "cloud-snow")
 check("a frosty night is the minimum", d28.min == -0.4)
 check("days carry only the documented fields", (function()
     for k in pairs(d24) do
-        if not ({ date = 1, icon = 1, min = 1, max = 1, rain = 1, pop = 1 })[k] then return false end
+        if not ({ date = 1, iconName = 1, min = 1, max = 1, rain = 1, pop = 1 })[k] then return false end
     end
     return true
 end)())
@@ -183,7 +183,7 @@ dates = {}
 for i, d in ipairs(f.days) do dates[i] = d.date end
 check("no zone set: the same days from city.timezone",
       table.concat(dates, ",") == "2026-10-24,2026-10-25,2026-10-26,2026-10-27,2026-10-28")
-check("a fixed offset misses the DST change: noon is still 09 UTC", f.days[2].icon == "cloud-sun")
+check("a fixed offset misses the DST change: noon is still 09 UTC", f.days[2].iconName == "cloud-sun")
 
 _G.datetime = nil
 answers.forecast = { status = 200, json = forecastJson({
@@ -203,7 +203,7 @@ check("at +3 h the 21 UTC step is the next local day",
 local function iconsOf(rows)
     answers.forecast = { status = 200, json = forecastJson(rows) }
     env.tick("forecast")
-    return weather:getForecast().days[1].icon
+    return weather:getForecast().days[1].iconName
 end
 local dryNoon = { { 0, 5, 800, "n", 0, 0 }, { 3, 5, 800, "n", 0, 0 }, { 6, 6, 800, "d", 0, 0 },
                   { 9, 9, 800, "d", 0, 0 }, { 12, 11, 800, "d", 0, 0 } }
@@ -216,6 +216,8 @@ end
 check("likely but trace rain keeps the sun", iconsOf(with({ 15, 10, 500, "d", 0.9, 0.2 })) == "sun")
 check("enough but unlikely rain keeps the sun", iconsOf(with({ 15, 10, 500, "d", 0.3, 2.0 })) == "sun")
 check("pop 0.4 and 0.3 mm is significant", iconsOf(with({ 15, 10, 500, "d", 0.4, 0.3 })) == "cloud-rain")
+check("a day of night steps only gets the night variant",
+      iconsOf({ { 0, 5, 800, "n", 0, 0 }, { 3, 5, 801, "n", 0, 0 } }) == "cloud-moon")
 check("thunder always counts", iconsOf(with({ 15, 10, 211, "d", 0.1, 0 })) == "cloud-lightning")
 f = weather:getForecast()
 
@@ -241,13 +243,15 @@ check("a reply without list is done(nil, err)", failed.data == nil and failed.er
 --------------------------------------------------------------------------------
 
 env.tick("fetch")
-check("current weather gets a Bootstrap icon", weather:getData().icon == "cloud-rain")
-check("and so does the registry object", env.objects["current"].icon == "cloud-rain")
+check("current weather gets a Bootstrap icon name", weather:getData().iconName == "cloud-rain")
+check("icon stays the OWM code", weather:getData().icon == "10n")
+check("and so does the registry object", env.objects["current"].iconName == "cloud-rain"
+      and env.objects["current"].icon == nil)
 check("existing fields stay", weather:getData().temp == 7.3 and weather:getCondition() == "Rain")
 
 answers.weather.json.weather = { { id = 800, main = "Clear", description = "clear sky", icon = "01n" } }
 env.tick("fetch")
-check("a clear night is the moon", weather:getData().icon == "moon")
+check("a clear night is the moon", weather:getData().iconName == "moon")
 
 --------------------------------------------------------------------------------
 -- CLEANUP
@@ -255,5 +259,24 @@ check("a clear night is the moon", weather:getData().icon == "moon")
 
 weather._cleanup()
 check("cleanup stops the forecast poller", fp.started == false)
+env.pollers["forecast"] = nil
+check("after cleanup there is no forecast", weather:getForecast() == nil)
+check("and getForecast starts no poller", env.pollers["forecast"] == nil)
+
+-- Without apiKey: nil and one warning.
+do
+    local env2 = harness.install({ http = function() return { err = "unexpected" } end })
+    local w = dofile(here .. "/init.lua")
+    w._init({})
+    local function warnings()
+        local n = 0
+        for _, line in ipairs(env2.log) do if line:find("^warn: getForecast") then n = n + 1 end end
+        return n
+    end
+    check("no apiKey: no forecast", w:getForecast() == nil and env2.pollers["forecast"] == nil)
+    w:getForecast()
+    check("no apiKey: warned once", warnings() == 1)
+    check("no apiKey: no request", #env2.http == 0)
+end
 
 os.exit(harness.report())
