@@ -194,6 +194,16 @@ function M.install(opts)
         }
     end
 
+    -- Timers wait for env.runTimers(); nothing runs on its own.
+    env.timers = {}
+    local nextTimer = 0
+    function Plugin:setTimeout(ms, fn)
+        nextTimer = nextTimer + 1
+        env.timers[nextTimer] = { ms = ms, fn = fn }
+        return nextTimer
+    end
+    function Plugin:clearTimer(id) env.timers[id] = nil end
+
     function Plugin:onInit(cb) self._init = cb end
     function Plugin:onCleanup(cb) self._cleanup = cb end
 
@@ -228,6 +238,25 @@ function M.install(opts)
     end
 
     function env.clearEmits() env.emits = {} end
+
+    --- Run every pending timer once, in the order they were set.
+    function env.runTimers()
+        local ids = {}
+        for id in pairs(env.timers) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            local t = env.timers[id]
+            env.timers[id] = nil
+            if t then t.fn() end
+        end
+        return #ids
+    end
+
+    function env.pendingTimers()
+        local n = 0
+        for _ in pairs(env.timers) do n = n + 1 end
+        return n
+    end
 
     return env
 end

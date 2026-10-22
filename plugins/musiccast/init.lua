@@ -181,6 +181,10 @@ function MusicCast:_stopPolling()
         self._poller:stop()
         self._poller = nil
     end
+    if self._playInfoTimer then
+        plugin:clearTimer(self._playInfoTimer)
+        self._playInfoTimer = nil
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -242,8 +246,26 @@ end
 -- PUBLIC API - Network playback (netusb)
 --------------------------------------------------------------------------------
 
+-- After next/previous the new track is known only from getPlayInfo.
+function MusicCast:_refreshPlayInfoSoon()
+    if self._playInfoTimer then return end
+    self._playInfoTimer = plugin:setTimeout(1000, function()
+        self._playInfoTimer = nil
+        self:_call("netusb/getPlayInfo", nil, function(info)
+            if info then self:_updatePlayInfo(info) end
+        end)
+    end)
+end
+
+local PLAYBACK_STATES = { play = true, pause = true, stop = true }
+
 function MusicCast:_setPlayback(action, callback)
-    self:_call("netusb/setPlayback", { playback = action }, callback)
+    self:_call("netusb/setPlayback", { playback = action }, function(json, err)
+        if not err then
+            if PLAYBACK_STATES[action] then self._playback = action else self:_refreshPlayInfoSoon() end
+        end
+        if callback then callback(json, err) end
+    end)
 end
 
 function MusicCast:play(callback) self:_setPlayback("play", callback) end

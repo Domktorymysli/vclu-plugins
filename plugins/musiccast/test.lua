@@ -96,6 +96,33 @@ check("recallPreset names the zone", last().url:find("netusb/recallPreset$")
 salon:play()
 check("play goes through netusb", last().query.playback == "play")
 
+check("play sets the playback state at once", salon:getState().playback == "play")
+salon:pause()
+check("pause sets it to pause", salon:getState().playback == "pause")
+salon:stop()
+check("stop sets it to stop", salon:getState().playback == "stop")
+
+salon:setMute(true)
+check("setMute sets mute on success", salon:isMuted() == true)
+salon:setMute(false)
+check("and clears it", salon:isMuted() == false)
+salon:on()
+check("on sets power on success", salon:isOn() == true)
+
+local before = #env.http
+salon:next()
+check("next schedules one play info read", env.pendingTimers() == 1 and #env.http == before + 1)
+salon:previous()
+check("a second skip reuses the pending read", env.pendingTimers() == 1)
+check("the delay is about a second", (function()
+    for _, t in pairs(env.timers) do return t.ms == 1000 end
+end)())
+check("next does not invent a playback state", salon:getState().playback == "stop")
+env.runTimers()
+check("the timer reads getPlayInfo", env.http[#env.http].url:find("/netusb/getPlayInfo$"))
+check("and updates the track and playback", salon:getTrack().artist == "Trójka"
+      and salon:getState().playback == "play")
+
 local refused
 salon:setInput("nonsense", function(_, err) refused = err end)
 check("a YXC error code is reported", refused and refused:find("invalid parameter"))
@@ -217,7 +244,21 @@ local broken
 sick:refresh(function(_, err) broken = err end)
 check("an HTTP error passes through", broken == "HTTP 500")
 
+sick._playback, sick._volume, sick._mute, sick._power = "play", 40, false, true
+sick:pause()
+sick:setVolume(80)
+sick:setMute(true)
+sick:off()
+check("failed commands change no state", sick:getState().playback == "play"
+      and sick._volume == 40 and sick:isMuted() == false and sick:isOn() == true)
+sick:next()
+check("a failed skip schedules no read", env.pendingTimers() == 0)
+
+salon:next()
+check("a read is pending before cleanup", env.pendingTimers() == 1)
+
 plugin._cleanup()
 check("cleanup empties the device list", #plugin:getDevices() == 0)
+check("cleanup cancels a pending play info read", env.pendingTimers() == 0)
 
 os.exit(harness.report())
