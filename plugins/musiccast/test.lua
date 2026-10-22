@@ -175,6 +175,28 @@ check("the track is still read without artwork", box:getTrack().input == "blueto
 check("an absolute URL is kept as is",
       artworkFor("deezer") == "https://e-cdns-images.dzcdn.net/images/cover/abc123/500x500.jpg")
 
+local function artworkOf(path)
+    playInfo = { response_code = 0, input = "server", playback = "play",
+                 artist = "A", track = "B", album = "C", albumart_url = path }
+    box:refresh()
+    return box:getTrack().artwork
+end
+local spaced = artworkOf("/YamahaRemoteControl/AlbumART/Okładka płyty.jpg")
+check("spaces and non-ASCII bytes are percent-encoded",
+      spaced and spaced:find("^http://192%.168%.0%.50/YamahaRemoteControl/AlbumART/Ok%%C5%%82adka%%20p%%C5%%82yty%.jpg%?t=%x+$"))
+local encoded = artworkOf("/art/My%20Cover%2Fx.jpg")
+check("an existing %XX is kept", encoded and encoded:find("^http://192%.168%.0%.50/art/My%%20Cover%%2Fx%.jpg%?t="))
+local lone = artworkOf("/art/100%.jpg")
+check("a lone % is encoded", lone and lone:find("/art/100%%25%.jpg%?t="))
+local queried = artworkOf("/art/cover.jpg?id=7&size=l")
+check("an existing query is kept and the buster follows with &",
+      queried and queried:find("^http://192%.168%.0%.50/art/cover%.jpg%?id=7&size=l&t=%x+$"))
+local fragment = artworkOf("/art/cover.jpg#top")
+check("a fragment is dropped, the buster is the last part",
+      fragment and fragment:find("^http://192%.168%.0%.50/art/cover%.jpg%?t=%x+$"))
+check("a fragment after a query is dropped too",
+      artworkOf("/art/cover.jpg?id=7#x"):find("%?id=7&t=%x+$") ~= nil)
+
 playInfo = { response_code = 0, input = "net_radio", playback = "play" }
 box:refresh()
 check("a reply without albumart_url is no artwork", box:getTrack().artwork == nil)

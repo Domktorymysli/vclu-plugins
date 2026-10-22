@@ -121,14 +121,26 @@ local function hash(s)
     return string.format("%x", h)
 end
 
+-- Percent-encode spaces and non-ASCII bytes; an existing %XX stays.
+local function encodePath(p)
+    p = p:gsub("[^%w%-%._~/%%!$&'()*+,;=:@]", function(c)
+        return string.format("%%%02X", c:byte())
+    end)
+    p = p:gsub("%%", "%%25")
+    return (p:gsub("%%25(%x%x)", "%%%1"))
+end
+
 -- albumart_url is a path on the device, the same for every track, so the
 -- track goes into the query; an absolute URL (some net services) stays as is.
+-- A #fragment never reaches the device and is dropped.
 function MusicCast:_artworkUrl(art, track)
     if type(art) ~= "string" or art == "" then return nil end
     if art:lower():find("^https?://") then return art end
-    if art:sub(1, 1) ~= "/" then art = "/" .. art end
+    local path, query = art:match("^([^?#]*)(%??[^#]*)")
+    if path:sub(1, 1) ~= "/" then path = "/" .. path end
+    query = (query == "" or query == "?") and "?" or (query .. "&")
     local key = hash(track.artist .. "|" .. track.title .. "|" .. track.album)
-    return "http://" .. self._ip .. art .. (art:find("?", 1, true) and "&" or "?") .. "t=" .. key
+    return "http://" .. self._ip .. encodePath(path) .. query .. "t=" .. key
 end
 
 function MusicCast:_updatePlayInfo(json)

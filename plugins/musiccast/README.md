@@ -75,5 +75,7 @@ Opcje `create`: `id` (domyślnie ip), `ip`, `name`, `zone` (`main`, `zone2`, ...
 Amplituner podaje okładkę jako ścieżkę na sobie, zwykle tę samą dla każdego
 utworu. Wtyczka składa z niej pełny adres `http://<ip><ścieżka>?t=<skrót>`, gdzie
 skrót zależy od wykonawcy, tytułu i albumu: przeglądarka pobiera okładkę na nowo
-po zmianie utworu, a nie przy każdym odczycie. Pełny adres (`http://`, `https://`)
-od usługi zostaje bez zmian.
+po zmianie utworu, a nie przy każdym odczycie. Jeśli ścieżka ma już zapytanie,
+skrót dochodzi na końcu jako `&t=<skrót>`. Spacje i znaki spoza ASCII w ścieżce są
+kodowane (`%20`, `%C5%82`), istniejące `%XX` zostają, a `#fragment` jest pomijany.
+Pełny adres (`http://`, `https://`) od usługi zostaje bez zmian.
