@@ -110,7 +110,8 @@ end)
 | `getPressure()`    | number      | Ciśnienie (hPa)                     |
 | `getClouds()`      | number      | Zachmurzenie (0-100%)               |
 | `getRain()`        | number      | Opady (mm/h)                        |
-| `getData()`        | table       | Wszystkie dane                      |
+| `getData()`        | table       | Wszystkie dane: `icon` to kod ikony OWM (np. `10d`), `iconName` nazwa z Bootstrap Icons |
+| `getForecast()`    | table / nil | Prognoza na 5 dni, `nil` przed pierwszym pobraniem |
 | `refresh()`        | void        | Wymuś odświeżenie                   |
 
 ## Struktura danych w Registry
@@ -126,10 +127,70 @@ end)
     wind = 5.2,           -- wiatr m/s
     rain = 0,             -- opady mm/h
     clouds = 40,          -- zachmurzenie %
+    iconName = "cloud-sun", -- ikona z Bootstrap Icons
     city = "Warsaw",      -- miasto
     updated = 1704067200  -- timestamp
 }
 ```
+
+## Prognoza
+
+`getForecast()` zwraca prognozę z `/data/2.5/forecast` (5 dni co 3 godziny,
+darmowy plan). Prognoza nie jest pobierana, dopóki nikt o nią nie zapyta:
+pierwsze wywołanie zwraca `nil` i uruchamia pobieranie, potem wtyczka odświeża ją
+co 30 minut (48 zapytań na dobę, poza bieżącą pogodą). `refresh()` jej nie
+dotyczy. Po błędzie zostaje ostatnia pobrana prognoza; jej wiek widać w `updated`.
+
+```lua
+local weather = Plugin.getPlugin("@vclu/weather")
+local f = weather:getForecast()
+if f then
+    for _, d in ipairs(f.days) do
+        print(d.date, d.iconName, d.min, d.max, d.rain, d.pop)
+    end
+end
+```
+
+```lua
+{
+    days = {
+        -- dzień w strefie domu; pierwszy i ostatni zwykle niepełny
+        { date = "2026-10-26", iconName = "cloud-rain", min = 7.6, max = 11.8, rain = 1.9, pop = 0.8 },
+        ...
+    },
+    hours = {
+        -- wszystkie kroki 3 h z odpowiedzi (zwykle 40)
+        { at = 1793026800, temp = 10.4, rain = 1.2, iconName = "cloud-rain" },
+        ...
+    },
+    updated = 1792800000  -- kiedy pobrano (unix, s)
+}
+```
+
+| Pole | Opis |
+|---|---|
+| `days[].date` | data `YYYY-MM-DD` w strefie domu |
+| `days[].min`, `max` | najniższa i najwyższa temperatura z kroków dnia (°C, °F dla `imperial`) |
+| `days[].rain` | suma opadów z dnia w mm: deszcz i śnieg razem, mimo nazwy pola |
+| `days[].pop` | największe prawdopodobieństwo opadu z dnia, 0-1 |
+| `days[].iconName` | ikona dnia (Bootstrap Icons): krok w dzień (6-20) ze znaczącymi opadami (prawdopodobieństwo ≥ 0,4 i ≥ 0,3 mm; burza zawsze), najgorszy z nich; bez takich kroków krok najbliższy południa; dzień z samymi krokami nocnymi dostaje nocny wariant |
+| `hours[].at` | początek kroku, unix (s) |
+| `hours[].temp`, `rain`, `iconName` | temperatura, opady (deszcz i śnieg) w mm za 3 h, ikona z Bootstrap Icons (nocą `moon`, `cloud-moon`) |
+
+Pola `iconName` to nazwy z [Bootstrap Icons](https://icons.getbootstrap.com/): `sun`, `moon`,
+`cloud-sun`, `cloud-moon`, `cloud`, `clouds`, `cloud-drizzle`, `cloud-rain`,
+`cloud-rain-heavy`, `cloud-lightning`, `cloud-lightning-rain`, `cloud-snow`,
+`cloud-sleet`, `cloud-fog2`, `cloud-haze2`, `wind`, `tornado`.
+
+vCLU nie daje jeszcze wtyczkom `datetime`, więc dni liczone są z przesunięcia
+UTC miasta z chwili pobrania (`city.timezone` z odpowiedzi OWM). Wokół zmiany
+czasu jest ono o godzinę nieaktualne. W Polsce (+1 i +2) daty dni się przez to
+nie zmieniają (kroki OWM wypadają o pełnych godzinach UTC podzielnych przez 3),
+ale ikona dnia może pochodzić z sąsiedniego kroku. Gdy vCLU udostępni wtyczkom
+`datetime` (ticket #96), dni będą liczone w strefie z `datetime.setTimezone`.
+
+Bez `apiKey` prognozy nie ma: `getForecast()` zwraca `nil`, a za pierwszym razem
+zapisuje ostrzeżenie w logu.
 
 ## Uzyskanie API Key
 
