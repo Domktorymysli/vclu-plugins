@@ -200,23 +200,6 @@
       "tag": "frigate-v2.0.1"
     },
     {
-      "id": "spotify",
-      "name": "Spotify",
-      "version": "0.1.1",
-      "description": "Sterowanie Spotify przez Web API (Premium)",
-      "author": "vCLU",
-      "path": "plugins/spotify",
-      "tags": [
-        "audio",
-        "spotify",
-        "factory"
-      ],
-      "requires": {
-        "vclu": ">=1.0.0"
-      },
-      "tag": "spotify-v0.1.1"
-    },
-    {
       "id": "musiccast",
       "name": "Yamaha MusicCast",
       "version": "0.2.0",
