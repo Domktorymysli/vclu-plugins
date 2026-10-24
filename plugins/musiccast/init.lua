@@ -114,14 +114,45 @@ function MusicCast:_updateStatus(json)
     if json.input then self._input = json.input end
 end
 
+-- Short hash of a string, for the artwork cache-buster.
+local function hash(s)
+    local h = 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 2147483647 end
+    return string.format("%x", h)
+end
+
+-- Percent-encode spaces and non-ASCII bytes; an existing %XX stays.
+local function encodePath(p)
+    p = p:gsub("[^%w%-%._~/%%!$&'()*+,;=:@]", function(c)
+        return string.format("%%%02X", c:byte())
+    end)
+    p = p:gsub("%%", "%%25")
+    return (p:gsub("%%25(%x%x)", "%%%1"))
+end
+
+-- albumart_url is a path on the device, the same for every track, so the
+-- track goes into the query; an absolute URL (some net services) stays as is.
+-- A #fragment never reaches the device and is dropped.
+function MusicCast:_artworkUrl(art, track)
+    if type(art) ~= "string" or art == "" then return nil end
+    if art:lower():find("^https?://") then return art end
+    local path, query = art:match("^([^?#]*)(%??[^#]*)")
+    if path:sub(1, 1) ~= "/" then path = "/" .. path end
+    query = (query == "" or query == "?") and "?" or (query .. "&")
+    local key = hash(track.artist .. "|" .. track.title .. "|" .. track.album)
+    return "http://" .. self._ip .. encodePath(path) .. query .. "t=" .. key
+end
+
 function MusicCast:_updatePlayInfo(json)
     self._playback = json.playback
-    self._track = {
+    local track = {
         artist = json.artist or "",
         title = json.track or "",
         album = json.album or "",
         input = json.input
     }
+    track.artwork = self:_artworkUrl(json.albumart_url, track)
+    self._track = track
 end
 
 function MusicCast:_startPolling()
@@ -149,6 +180,10 @@ function MusicCast:_stopPolling()
     if self._poller then
         self._poller:stop()
         self._poller = nil
+    end
+    if self._playInfoTimer then
+        plugin:clearTimer(self._playInfoTimer)
+        self._playInfoTimer = nil
     end
 end
 
@@ -211,8 +246,26 @@ end
 -- PUBLIC API - Network playback (netusb)
 --------------------------------------------------------------------------------
 
+-- After next/previous the new track is known only from getPlayInfo.
+function MusicCast:_refreshPlayInfoSoon()
+    if self._playInfoTimer then return end
+    self._playInfoTimer = plugin:setTimeout(1000, function()
+        self._playInfoTimer = nil
+        self:_call("netusb/getPlayInfo", nil, function(info)
+            if info then self:_updatePlayInfo(info) end
+        end)
+    end)
+end
+
+local PLAYBACK_STATES = { play = true, pause = true, stop = true }
+
 function MusicCast:_setPlayback(action, callback)
-    self:_call("netusb/setPlayback", { playback = action }, callback)
+    self:_call("netusb/setPlayback", { playback = action }, function(json, err)
+        if not err then
+            if PLAYBACK_STATES[action] then self._playback = action else self:_refreshPlayInfoSoon() end
+        end
+        if callback then callback(json, err) end
+    end)
 end
 
 function MusicCast:play(callback) self:_setPlayback("play", callback) end
