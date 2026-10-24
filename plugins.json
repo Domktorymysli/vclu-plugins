@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-24T15:55:08Z",
+  "updated": "2026-10-24T15:55:24Z",
   "plugins": [
     {
       "id": "weather",
@@ -219,7 +219,7 @@
     {
       "id": "musiccast",
       "name": "Yamaha MusicCast",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "description": "Amplitunery i głośniki Yamaha MusicCast przez lokalne API",
       "author": "vCLU",
       "path": "plugins/musiccast",
@@ -231,7 +231,7 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "musiccast-v0.1.1"
+      "tag": "musiccast-v0.2.0"
     },
     {
       "id": "influx-metrics",
