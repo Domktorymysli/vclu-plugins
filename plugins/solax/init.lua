@@ -68,6 +68,15 @@ local function numField(body, name)
     return raw and tonumber(raw) or nil
 end
 
+-- today_e is printed as "<int>.<hundredths>" without zero padding, so 8.09 kWh
+-- arrives as "8.9". One digit after the dot means hundredths.
+local function hundredthsField(body, name)
+    local raw = body:match('webdata_' .. name .. '%s*=%s*"%s*([%d%.%-]*)')
+    local whole, frac = (raw or ""):match("^(%d+)%.(%d)$")
+    if whole then return tonumber(whole) + tonumber(frac) / 100 end
+    return raw and tonumber(raw) or nil
+end
+
 -- Extract a trimmed string field.
 local function strField(body, name)
     local raw = body:match('webdata_' .. name .. '%s*=%s*"([^"]*)"')
@@ -85,7 +94,7 @@ local function parseStatusPage(body)
     end
     return {
         power = numField(body, "now_p"),
-        today = numField(body, "today_e"),
+        today = hundredthsField(body, "today_e"),
         total = numField(body, "total_e"),
         sn = strField(body, "sn") or "",
         pvType = strField(body, "pv_type") or "",
