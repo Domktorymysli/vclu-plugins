@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-24T15:55:24Z",
+  "updated": "2026-10-28T15:05:19Z",
   "plugins": [
     {
       "id": "weather",
@@ -141,7 +141,7 @@
     {
       "id": "solax",
       "name": "SolaX Inverter",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html)",
       "author": "tytus",
       "path": "plugins/solax",
@@ -156,7 +156,7 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "solax-v1.0.1"
+      "tag": "solax-v1.0.2"
     },
     {
       "id": "modbus-gateway",
