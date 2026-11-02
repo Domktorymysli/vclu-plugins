@@ -134,7 +134,8 @@ function Prices:new(options)
         _days = {},       -- date -> { slots = { {from, to, rce}, ... }, hours = {...} }
         _tried = {},      -- date -> last request time
         _handlers = { prices = {}, price = {}, cheap = {}, expensive = {} },
-        _slotFrom = nil,  -- start of the slot whose price was last announced
+        _slotFrom = nil,  -- start of the slot last checked
+        _lastPrice = nil, -- price last announced by the price event
         _hourFrom = nil,  -- start of the hour whose events last ran
         _lastError = nil,
         _poller = nil,
@@ -240,19 +241,19 @@ function Prices:_fetch(date, callback)
         if resp.err then
             self._lastError = resp.err
             plugin:log("warn", "RCE " .. date .. ": " .. tostring(resp.err))
-            callback(false)
+            callback(resp.err)
             return
         end
         if type(resp.json) ~= "table" then
             self._lastError = "RCE " .. date .. ": no JSON in the answer"
             plugin:log("warn", self._lastError)
-            callback(false)
+            callback(self._lastError)
             return
         end
         local rows = resp.json.value
         if type(rows) ~= "table" or #rows == 0 then
-            -- not published yet (tomorrow before ~14:00)
-            callback(false)
+            -- not published yet (tomorrow before ~14:00): no error
+            callback(nil)
             return
         end
         local slots = {}
@@ -266,7 +267,7 @@ function Prices:_fetch(date, callback)
         if #slots == 0 then
             self._lastError = "RCE " .. date .. ": no readable rows"
             plugin:log("warn", self._lastError)
-            callback(false)
+            callback(self._lastError)
             return
         end
         self._lastError = nil
@@ -275,11 +276,12 @@ function Prices:_fetch(date, callback)
         self:_save()
         plugin:log("info", string.format("RCE %s: %d prices", date, #slots))
         self:_fire("prices", date, self:hours(date))
-        callback(true)
+        callback(nil)
     end)
 end
 
--- Asks for today, and from TOMORROW_FROM for tomorrow, until they come.
+-- Asks for today, and from TOMORROW_FROM for tomorrow, until they come;
+-- done(err) gets the last request error, nil when there was none.
 function Prices:_fetchMissing(done)
     local now = os.time()
     local wanted = { plDate(now) }
@@ -294,11 +296,12 @@ function Prices:_fetchMissing(done)
 
     -- the count lives in a table: after an error caught by pcall (a
     -- user handler in _fire) gopher-lua can detach a captured local
-    local wait = { left = #pending }
+    local wait = { left = #pending, err = nil }
     for _, date in ipairs(pending) do
-        self:_fetch(date, function()
+        self:_fetch(date, function(err)
+            if err then wait.err = err end
             wait.left = wait.left - 1
-            if wait.left == 0 then done() end
+            if wait.left == 0 then done(wait.err) end
         end)
     end
 end
@@ -331,7 +334,11 @@ function Prices:_check()
     if slot and slot.from ~= self._slotFrom then
         self._slotFrom = slot.from
         if self._sensor and self._sensor._notify then self._sensor:_notify() end
-        self:_fire("price", self:now())
+        local price = self:now()
+        if price ~= self._lastPrice then
+            self._lastPrice = price
+            self:_fire("price", price)
+        end
     end
 
     local hour, day = self:_hourAt(now)
@@ -353,9 +360,11 @@ function Prices:_start()
         immediate = true,
         timeout = 30000,
         onTick = function(done)
-            self:_fetchMissing(function()
+            self:_fetchMissing(function(err)
                 self:_check()
-                done()
+                -- a failed request shows in the poller stats; the price and
+                -- the hour were checked anyway
+                if err then done(nil, err) else done() end
             end)
         end,
         onError = function(err)
@@ -373,7 +382,10 @@ function Prices:_stop()
 end
 
 function Prices:_fire(event, ...)
-    for _, fn in ipairs(self._handlers[event]) do
+    -- a copy: a handler may remove itself (or another) while it runs
+    local list = {}
+    for i, fn in ipairs(self._handlers[event]) do list[i] = fn end
+    for _, fn in ipairs(list) do
         local ok, err = pcall(fn, ...)
         if not ok then plugin:log("error", "RCE " .. event .. " handler: " .. tostring(err)) end
     end
@@ -577,6 +589,9 @@ end)
 -- @return Prices
 function plugin:create(options)
     options = options or {}
+    if options.id ~= nil and (type(options.id) ~= "string" or options.id == "") then
+        error("pse-rce:create: id must be a non-empty string")
+    end
     local id = options.id or "rce"
     for _, p in ipairs(instances) do
         if p._id == id then
@@ -587,6 +602,12 @@ function plugin:create(options)
     for _, k in ipairs({ "extra", "vat", "multiplier", "cheapHours", "expensiveHours" }) do
         if options[k] ~= nil and type(options[k]) ~= "number" then
             error("pse-rce:create: " .. k .. " must be a number")
+        end
+    end
+    for _, k in ipairs({ "cheapHours", "expensiveHours" }) do
+        local n = options[k]
+        if n ~= nil and (n < 0 or n ~= math.floor(n)) then
+            error("pse-rce:create: " .. k .. " must be a whole number, 0 or more")
         end
     end
 

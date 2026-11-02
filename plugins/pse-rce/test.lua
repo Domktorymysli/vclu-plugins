@@ -7,10 +7,16 @@ local here = arg[0]:match("^(.*)[/\\][^/\\]+$") or "."
 local harness = dofile(here .. "/../../test/harness.lua")
 local check = harness.check
 
--- UTC epoch of a date and time, for the fake clock
-local function utc(y, m, d, h, mi)
-    return os.time({ year = y, month = m, day = d, hour = h, min = mi or 0, sec = 0, isdst = false })
-        - os.time({ year = 1970, month = 1, day = 1, hour = 0, isdst = false })
+-- UTC epoch of a date and time, for the fake clock: plain arithmetic,
+-- so the time zone of the machine running the tests does not matter
+local function utc(y, mo, d, h, mi)
+    if mo <= 2 then y = y - 1 end
+    local era = math.floor(y / 400)
+    local yoe = y - era * 400
+    local doy = math.floor((153 * ((mo + 9) % 12) + 2) / 5) + d - 1
+    local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+    local days = era * 146097 + doe - 719468
+    return days * 86400 + h * 3600 + (mi or 0) * 60
 end
 
 local clock = utc(2026, 11, 2, 9, 0) -- 10:00 in Poland (CET)
@@ -157,9 +163,14 @@ env.tick("rce_rce")
 check("an expensive hour fires expensive", #expensive == 1 and expensive[1].rce == 900)
 check("isExpensive at an expensive hour", ceny:isExpensive())
 
-off()
+-- the same price in the next quarter of the hour is no price event
 local before = #prices
 clock = utc(2026, 11, 2, 18, 15)
+env.tick("rce_rce")
+check("an unchanged price is no price event", #prices == before)
+
+off()
+clock = utc(2026, 11, 2, 19, 0) -- 20:00 local, another price
 env.tick("rce_rce")
 check("on() returns a function that removes the handler", #prices == before)
 check("an unknown event is an error", not pcall(function() ceny:on("nonsense", function() end) end))
@@ -232,5 +243,92 @@ env.tick("rce_short")
 check("a 23-hour day has 92 quarter-hours", #short:slots("2026-03-29") == 92)
 check("a 23-hour day has 23 hours", #short:hours("2026-03-29") == 23)
 
+--------------------------------------------------------------------------------
+-- PR REVIEW: tomorrow on the autumn change day, blocks, cleanup, notify,
+-- handlers removing themselves, option checks, refresh, tick errors
+--------------------------------------------------------------------------------
+
+-- 2026-10-25 00:30 CEST (Oct 24 22:30 UTC): +24 h would still be 10-25
+published["2026-10-26"] = day("2026-10-26", utc(2026, 10, 25, 23), 250)
+clock = utc(2026, 10, 25, 13) -- 14:00 CET: today and tomorrow come
+local fall = plugin:create({ id = "fall" })
+env.tick("rce_fall")
+clock = utc(2026, 10, 24, 22, 30)
+check("tomorrow at 00:30 on the autumn change day is 10-26",
+      fall:hasTomorrow() and #fall:slots("tomorrow") == 96)
+
+-- cheapest block across midnight, and never across a missing day
+published["2026-12-01"] = day("2026-12-01", utc(2026, 11, 30, 23), 500, { [23] = 10 })
+published["2026-12-02"] = day("2026-12-02", utc(2026, 12, 1, 23), 500, { [0] = 20 })
+clock = utc(2026, 12, 1, 13) -- 14:00 CET on 12-01
+local mid = plugin:create({ id = "mid" })
+env.tick("rce_mid")
+local b2 = mid:cheapest(2, { block = true })
+check("a block of 2 can run across midnight",
+      b2 and b2[1].rce == 10 and b2[2].rce == 20 and b2[2].from == utc(2026, 12, 1, 23))
+-- 12-01 and 12-04 known, 12-02 and 12-03 not: 23:00 on 12-01 (10) and
+-- 00:00 on 12-04 (20) sit next to each other in the list, but not in time
+published["2026-12-04"] = day("2026-12-04", utc(2026, 12, 3, 23), 500, { [0] = 20 })
+clock = utc(2026, 12, 3, 13) -- 14:00 CET on 12-03: tomorrow 12-04 comes
+local src = plugin:create({ id = "src4" })
+env.tick("rce_src4")
+env.kv["days:gap"] = {
+    ["2026-12-01"] = env.kv["days:mid"]["2026-12-01"],
+    ["2026-12-04"] = env.kv["days:src4"]["2026-12-04"],
+}
+local g = plugin:create({ id = "gap", polling = false })
+local gb = g:cheapest(2, { block = true, from = utc(2026, 12, 1, 12) })
+check("a block never joins hours across a missing day",
+      gb and gb[1].rce == 20 and gb[2].from == gb[1].to)
+
+-- sensor notify on a new quarter
+local notified = 0
+env.sensors["rce_price"]._notify = function() notified = notified + 1 end
+clock = utc(2026, 11, 2, 19, 15)
+ceny._days["2026-11-02"] = ceny._days["2026-11-02"] -- still loaded
+env.tick("rce_rce")
+check("the price sensor is notified on a new quarter", notified == 1)
+
+-- a handler that removes itself does not make the next one miss the event
+local seen = {}
+local offSelf
+offSelf = ceny:on("expensive", function() seen[#seen + 1] = "a"; offSelf() end)
+ceny:on("expensive", function() seen[#seen + 1] = "b" end)
+ceny:_fire("expensive", {})
+check("a handler removing itself does not skip the next", #seen == 2 and seen[2] == "b")
+
+-- option checks
+check("a numeric id is an error", not pcall(function() plugin:create({ id = 5 }) end))
+check("fractional cheapHours is an error",
+      not pcall(function() plugin:create({ id = "f", cheapHours = 2.5 }) end))
+check("negative expensiveHours is an error",
+      not pcall(function() plugin:create({ id = "n", expensiveHours = -1 }) end))
+
+-- refresh asks again at once for what is missing
+requests = {}
+clock = utc(2026, 12, 4, 12, 30) -- 13:30 CET on 12-04, 12-05 not published
+local fresh = plugin:create({ id = "fresh" })
+env.tick("rce_fresh")
+local n1 = #requests
+env.tick("rce_fresh")
+check("a missing day waits for the retry", #requests == n1)
+fresh:refresh()
+check("refresh asks for the missing day at once", #requests > n1)
+
+-- a failed request reaches the poller as an error, a pending day does not
+clock = utc(2026, 1, 1, 9)
+local broken2 = plugin:create({ id = "broken2" })
+local _, failed = env.tick("rce_broken2")
+check("an HTTP error is passed to the poller", failed and failed.err == "HTTP 503")
+clock = utc(2026, 11, 2, 9)
+local ok2 = plugin:create({ id = "ok2" })
+local _, fine = env.tick("rce_ok2")
+check("a successful tick has no error", fine and fine.err == nil)
+
+-- cleanup stops every poller
+plugin._cleanup()
+check("cleanup stops the pollers", env.pollers["rce_rce"].started == false
+      and env.pollers["rce_fall"].started == false)
+
 os.time = realTime
-harness.report()
+os.exit(harness.report())

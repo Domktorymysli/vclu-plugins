@@ -25,22 +25,26 @@ local rce = Plugin.getPlugin("@vclu/pse-rce")
 
 local ceny = rce:create({ id = "rce" })
 
-print(ceny:now())          -- cena teraz w zł/kWh
+print(ceny:now())          -- RCE teraz w zł/kWh
 print(ceny:rce())          -- to samo w zł/MWh, tak jak podaje PSE
 
--- godzina "HH:MM" w czasie polskim
+-- godzina "HH:MM" w strefie z datetime.setTimezone
 local function godz(ts)
     return datetime.format(datetime.fromTimestamp(ts), "15:04")
 end
 
-local tanie = ceny:cheapest(3)  -- 3 najtańsze godziny od teraz
-for i, h in ipairs(tanie) do
+-- 3 godziny z najniższą RCE od teraz; zaraz po instalacji cen
+-- jeszcze nie ma i cheapest() daje nil, stąd "or {}"
+for i, h in ipairs(ceny:cheapest(3) or {}) do
     print(godz(h.from), h.price)
 end
 ```
 
 `from` i `to` to znaczniki czasu (sekundy), jak `os.time()`. Do wyświetlenia
-użyj `datetime.format`, jak wyżej: `os.date` pokazuje czas serwera (zwykle UTC).
+użyj `datetime.format`, jak wyżej. Czas polski pokaże tylko wtedy, gdy na początku
+`modules/init.lua` jest `datetime.setTimezone("Europe/Warsaw")`; bez tego, tak jak
+`os.date`, pokazuje czas serwera (zwykle UTC). Sama wtyczka liczy czas polski
+niezależnie od strefy serwera.
 
 ## Własny wzór ceny
 
@@ -69,14 +73,15 @@ ceny:cheapest(3)
 -- najlepiej zużyć nadwyżkę zamiast oddać ją do sieci)
 ceny:cheapest(2, { block = true })
 
--- najdroższa godzina dziś
+-- godzina z najwyższą RCE od teraz (po ~14:00 także jutro)
 ceny:expensive(1)
 ```
 
 Każda godzina to `{ from, to, rce, price }`: średnia z czterech kwadransów.
 `from` i `to` w `opts` zawężają wybór do okna (znaczniki czasu); bez nich liczą
 się wszystkie znane godziny od teraz.
-Gdy znanych godzin jest mniej niż `n`, wynik to `nil`.
+Gdy znanych godzin jest mniej niż `n`, wynik to `nil`. „Od teraz” obejmuje
+godzinę, która właśnie trwa, także o :59.
 
 `isCheap()` i `isExpensive()` mówią, czy bieżąca godzina jest wśród `cheapHours`
 najtańszych (albo `expensiveHours` najdroższych) godzin swojej doby według RCE.
@@ -98,7 +103,8 @@ ceny:on("cheap", function(h) end)
 -- zaczęła się jedna z expensiveHours najdroższych godzin doby
 ceny:on("expensive", function(h) end)
 
--- cena się zmieniła (co 15 minut)
+-- cena się zmieniła; sprawdzane co kwadrans, ta sama cena
+-- nie wywołuje zdarzenia
 ceny:on("price", function(price) end)
 ```
 
@@ -114,8 +120,9 @@ Do Home Assistant i na wykres przez `metric()` wystawiasz ją w swoim module:
 ```lua
 local cena = VirtualNumber:new("rce_teraz", { unit = "zł/kWh" })
 ceny:on("price", function(p) cena:setValue(p) end)
--- pierwsza cena mogła przyjść już w create(), przed on()
-cena:setValue(ceny:now() or 0)
+-- pierwsza cena mogła przyjść już w create(), przed on();
+-- bez ceny nie wysyłamy nic, żeby HA nie dostał zera
+if ceny:now() then cena:setValue(ceny:now()) end
 expose(cena, "number", {
     name = "RCE", area = "Energia", unit = "zł/kWh",
     readonly = true, path = "energia:rce",
@@ -129,6 +136,8 @@ metric("energia:rce", function() return ceny:now() end, {
 Tabela cen na jutro na dashboardzie:
 
 ```lua
+local dash = Dashboard.new("rce"):name("RCE"):icon("lightning-charge")
+
 local function jutro()
     local rows = {}
     for i, h in ipairs(ceny:hours("tomorrow")) do
@@ -142,6 +151,8 @@ dash:section("RCE", "lightning-charge")
         { key = "godzina", label = "Godzina" },
         { key = "cena", label = "Cena", unit = "zł/kWh", decimals = 2 },
     } })
+
+dash:build()
 ```
 
 ## API
@@ -156,7 +167,9 @@ dash:section("RCE", "lightning-charge")
 | `hasTomorrow()` | czy są już ceny na jutro |
 | `on(event, fn)` | `prices`, `price`, `cheap`, `expensive`; zwraca funkcję wyrejestrowania |
 | `sensor()` | sensor z ceną teraz |
-| `refresh()`, `getState()` | ponowne pobranie i stan |
+| `toPrice(rce)` | przelicza RCE w zł/MWh na zł/kWh wzorem z `create` |
+| `refresh()` | pobiera od razu doby, których brakuje (dziś, od 13:00 też jutro); te, które już są, zostają |
+| `getId()`, `getState()` | identyfikator i stan |
 
 Opcje `create`:
 
