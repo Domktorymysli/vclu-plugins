@@ -5,7 +5,7 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-10-28T15:05:19Z",
+  "updated": "2026-11-02T23:57:32Z",
   "plugins": [
     {
       "id": "weather",
@@ -230,7 +230,8 @@
       ],
       "requires": {
         "vclu": ">=1.0.0"
-      }
+      },
+      "tag": "pse-rce-v0.1.0"
     },
     {
       "id": "influx-metrics",
