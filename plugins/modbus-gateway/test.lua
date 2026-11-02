@@ -114,6 +114,52 @@ check("values reached the device state", garaz:getValue("pralnia", "voltage") ~=
 check("gateway reports online", garaz:isOnline() == true)
 
 --------------------------------------------------------------------------------
+-- PAUSE
+--
+-- A meter behind a contactor loses power; polling it costs two timeouts a
+-- cycle. A paused device is skipped and reads offline until resume().
+--------------------------------------------------------------------------------
+
+local asked = {}
+local function counting(fn)
+    return function(reqOpts, cb)
+        asked[reqOpts.unit] = (asked[reqOpts.unit] or 0) + 1
+        return fn(reqOpts, cb)
+    end
+end
+Modbus.request = counting(Modbus.request)
+Modbus.readInput = counting(Modbus.readInput)
+Modbus.readHolding = counting(Modbus.readHolding)
+
+check("pause of an unknown device is refused", garaz:pause("nie_ma") == false)
+check("pause of a known device", garaz:pause("pralnia") == true)
+check("paused device reads offline", garaz:getDevice("pralnia").online == false
+      and garaz:getDevice("pralnia").paused == true and garaz:isPaused("pralnia"))
+
+asked = {}
+local _, got = env.tick("read_garaz")
+check("paused device is not asked", asked[3] == nil and (asked[2] or 0) > 0)
+check("a paused device is not a failure", got and got.err == nil
+      and got.data.read == 1 and got.data.failed == 0)
+check("gateway still online", garaz:isOnline() == true)
+
+check("resume", garaz:resume("pralnia") == true and not garaz:isPaused("pralnia"))
+check("resume twice is a no-op", garaz:resume("pralnia") == false)
+asked = {}
+env.tick("read_garaz")
+check("resumed device is asked again", (asked[3] or 0) > 0)
+check("resumed device online again", garaz:getDevice("pralnia").online == true)
+
+garaz:pause("pralnia")
+garaz:pause("klima")
+asked = {}
+_, got = env.tick("read_garaz")
+check("all paused: nothing asked, no error", next(asked) == nil and got and got.err == nil)
+check("all paused: link state kept", garaz:isOnline() == true)
+garaz:resume("pralnia")
+garaz:resume("klima")
+
+--------------------------------------------------------------------------------
 -- SANDBOX CONSTRAINTS
 --
 -- The plugin sandbox exposes a named allowlist of globals and setmetatable is
