@@ -24,6 +24,7 @@ handle any number of them.
 | [modbus-gateway](plugins/modbus-gateway/) | Modbus RTU devices behind RS485-Ethernet gateways (Waveshare, USR, Elfin) | factory |
 | [influx-metrics](plugins/influx-metrics/) | Sends metrics to InfluxDB, Telegraf or VictoriaMetrics | factory |
 | [musiccast](plugins/musiccast/) | Yamaha MusicCast receivers and speakers through their local API | factory |
+| [pse-rce](plugins/pse-rce/) | Polish market energy price (RCE) from PSE: today and tomorrow, what PV surplus is worth under net-billing | factory |
 | [tasmota-switch](plugins/tasmota-switch/) | Tasmota switches (Sonoff and others) over HTTP | factory ¹ |
 
 ¹ Not in `plugins.json` yet, so the panel does not list it.
