@@ -217,6 +217,22 @@
       "tag": "musiccast-v0.2.0"
     },
     {
+      "id": "pse-rce",
+      "name": "Ceny energii RCE (PSE)",
+      "version": "0.1.0",
+      "description": "Rynkowa cena energii (RCE) z PSE co 15 minut: dziś i jutro, ile warta jest nadwyżka w net-billingu",
+      "author": "vCLU",
+      "path": "plugins/pse-rce",
+      "tags": [
+        "energy",
+        "prices",
+        "factory"
+      ],
+      "requires": {
+        "vclu": ">=1.0.0"
+      }
+    },
+    {
       "id": "influx-metrics",
       "name": "InfluxDB Metrics",
       "version": "1.1.2",
