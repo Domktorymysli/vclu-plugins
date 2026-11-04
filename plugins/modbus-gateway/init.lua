@@ -393,8 +393,10 @@ function Gateway:_buildPoller()
                 if not device then
                     this.state.ready = true
                     -- Every device paused: nothing was asked, the link state stays as it was
-                    if polled > 0 then this.state.online = anySuccess end
-                    this.state.lastUpdate = os.time()
+                    if polled > 0 then
+                        this.state.online = anySuccess
+                        this.state.lastUpdate = os.time()
+                    end
                     this.state.lastError = (#failures > 0) and table.concat(failures, "; ") or nil
 
                     plugin:updateObject("gateways." .. this.id, {
@@ -422,7 +424,10 @@ function Gateway:_buildPoller()
                 if this.state.paused[device.id] then return step() end
                 polled = polled + 1
                 this:_readDevice(device, function(values, err)
-                    if err then
+                    -- Paused while the read was in flight: the answer no longer counts
+                    if this.state.paused[device.id] then
+                        polled = polled - 1
+                    elseif err then
                         this:_applyError(device, err)
                         table.insert(failures, device.id .. ": " .. tostring(err))
                     else
@@ -471,7 +476,12 @@ function Gateway:pause(id)
     for _, device in ipairs(self.devices) do
         if device.id == id then
             self.state.paused[id] = true
-            self:_applyError(device, "paused")
+            -- Intentional, so no modbus:device_offline for alert listeners
+            local ds = self.state.devices[id]
+            ds.online = false
+            ds.lastError = "paused"
+            notify(self:_sensorId(device, "online"))
+            plugin:updateObject("devices." .. id, { online = false, lastError = "paused" })
             return true
         end
     end

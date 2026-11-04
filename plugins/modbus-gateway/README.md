@@ -121,7 +121,7 @@ end)
 garaz:write({ unit = 5, addr = 0x0020, value = 3 }, function(echo, err) end)
 ```
 
-`pause()` jest dla licznika, który czasem traci zasilanie, np. za stycznikiem ładowarki. Bez prądu licznik milczy, a każdy cykl czeka wtedy na jego timeouty i loguje `partial read`. Wstrzymany licznik jest pomijany i ma `online = false` do `resume()`; `getValue` dalej oddaje jego ostatnie wartości. Po `resume()` daj licznikowi chwilę na start: pierwszy odczyt bywa jeszcze timeoutem.
+`pause()` jest dla licznika, który czasem traci zasilanie, np. za stycznikiem ładowarki. Bez prądu licznik milczy, a każdy cykl czeka wtedy na jego timeouty i loguje `partial read`. Wstrzymany licznik jest pomijany i ma `online = false` do `resume()`; jego sensory i `getValue` dalej oddają ostatnie wartości, więc moc sprawdzaj razem z `isPaused()` albo `_online`. `pause()` nie wysyła `modbus:device_offline`. Obie metody zwracają `false` dla nieznanego id, a `resume()` także dla licznika, który nie był wstrzymany. Wstrzymanie żyje tylko w pamięci: po przeładowaniu moduł ma je ustawić od nowa, np. ze stanu stycznika. Po `resume()` daj licznikowi chwilę na start: pierwszy odczyt bywa jeszcze timeoutem.
 
 Na poziomie pluginu:
 

@@ -132,7 +132,9 @@ Modbus.readInput = counting(Modbus.readInput)
 Modbus.readHolding = counting(Modbus.readHolding)
 
 check("pause of an unknown device is refused", garaz:pause("nie_ma") == false)
+env.clearEmits()
 check("pause of a known device", garaz:pause("pralnia") == true)
+check("pause is not reported as an outage", #env.emitsOf("modbus:device_offline") == 0)
 check("paused device reads offline", garaz:getDevice("pralnia").online == false
       and garaz:getDevice("pralnia").paused == true and garaz:isPaused("pralnia"))
 
@@ -158,6 +160,20 @@ check("all paused: nothing asked, no error", next(asked) == nil and got and got.
 check("all paused: link state kept", garaz:isOnline() == true)
 garaz:resume("pralnia")
 garaz:resume("klima")
+
+-- pause() arriving while that device's read is in flight
+local inner = Modbus.request
+Modbus.request = function(reqOpts, cb)
+    if reqOpts.unit == 3 then garaz:pause("pralnia") end
+    return inner(reqOpts, cb)
+end
+_, got = env.tick("read_garaz")
+Modbus.request = inner
+check("answer after a mid-read pause is dropped", garaz:getDevice("pralnia").online == false
+      and garaz:getDevice("pralnia").lastError == "paused")
+check("dropped answer is not counted", got and got.data.read == 1 and got.data.failed == 0)
+garaz:resume("pralnia")
+env.tick("read_garaz")
 
 --------------------------------------------------------------------------------
 -- SANDBOX CONSTRAINTS
