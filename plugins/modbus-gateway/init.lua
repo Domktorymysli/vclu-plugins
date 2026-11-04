@@ -61,7 +61,7 @@
 
 local plugin = Plugin:new("modbus-gateway", {
     name = "Modbus Gateway",
-    version = "2.0.3",
+    version = "2.1.0",
     description = "Fabryka bramek Modbus RTU po RS485-Ethernet (Modbus TCP)"
 })
 
@@ -384,6 +384,7 @@ function Gateway:_buildPoller()
 
         onTick = function(done)
             local index = 1
+            local polled = 0
             local anySuccess = false
             local failures = {}
 
@@ -391,25 +392,28 @@ function Gateway:_buildPoller()
                 local device = this.devices[index]
                 if not device then
                     this.state.ready = true
-                    this.state.online = anySuccess
-                    this.state.lastUpdate = os.time()
+                    -- Every device paused: nothing was asked, the link state stays as it was
+                    if polled > 0 then
+                        this.state.online = anySuccess
+                        this.state.lastUpdate = os.time()
+                    end
                     this.state.lastError = (#failures > 0) and table.concat(failures, "; ") or nil
 
                     plugin:updateObject("gateways." .. this.id, {
-                        ready = true, online = anySuccess, lastUpdate = this.state.lastUpdate
+                        ready = true, online = this.state.online, lastUpdate = this.state.lastUpdate
                     })
                     notify(gatewaySensorId(this.id))
 
-                    if anySuccess then
+                    if anySuccess or polled == 0 then
                         plugin:emit("modbus:updated", {
-                            gateway = this.id, devices = #this.devices - #failures
+                            gateway = this.id, devices = polled - #failures
                         }, { throttle = 30000, key = this.id })
                         -- A silent device is normal and often permanent, so it
                         -- must not back the poller off; _online carries the news.
                         if #failures > 0 then
                             plugin:log("warn", this.id .. " partial read: " .. this.state.lastError)
                         end
-                        done({ read = #this.devices - #failures, failed = #failures }, nil)
+                        done({ read = polled - #failures, failed = #failures }, nil)
                     else
                         done(nil, this.state.lastError or "no device responded")
                     end
@@ -417,8 +421,13 @@ function Gateway:_buildPoller()
                 end
 
                 index = index + 1
+                if this.state.paused[device.id] then return step() end
+                polled = polled + 1
                 this:_readDevice(device, function(values, err)
-                    if err then
+                    -- Paused while the read was in flight: the answer no longer counts
+                    if this.state.paused[device.id] then
+                        polled = polled - 1
+                    elseif err then
                         this:_applyError(device, err)
                         table.insert(failures, device.id .. ": " .. tostring(err))
                     else
@@ -457,8 +466,36 @@ function Gateway:get(id) return plugin:get(id) end
 function Gateway:getDevice(id)
     local ds = self.state.devices[id]
     if not ds then return nil end
-    return { online = ds.online, lastError = ds.lastError, values = ds.values }
+    return { online = ds.online, lastError = ds.lastError, values = ds.values, paused = self.state.paused[id] == true }
 end
+
+--- Stop polling one device, e.g. a meter that loses power behind a contactor, so
+-- each cycle does not wait for its timeouts. It reads offline until resume().
+function Gateway:pause(id)
+    if self.state.paused[id] then return true end
+    for _, device in ipairs(self.devices) do
+        if device.id == id then
+            self.state.paused[id] = true
+            -- Intentional, so no modbus:device_offline for alert listeners
+            local ds = self.state.devices[id]
+            ds.online = false
+            ds.lastError = "paused"
+            notify(self:_sensorId(device, "online"))
+            plugin:updateObject("devices." .. id, { online = false, lastError = "paused" })
+            return true
+        end
+    end
+    return false
+end
+
+--- Poll a paused device again from the next cycle.
+function Gateway:resume(id)
+    if not self.state.paused[id] then return false end
+    self.state.paused[id] = nil
+    return true
+end
+
+function Gateway:isPaused(id) return self.state.paused[id] == true end
 
 --- One decoded field, e.g. gw:getValue("pralka", "power")
 function Gateway:getValue(deviceId, fieldId)
@@ -564,7 +601,7 @@ function plugin:create(opts)
         interval = plugin:coerceNumber(opts.interval, 30),
         devices = {},
         poller = nil,
-        state = { ready = false, online = false, lastUpdate = 0, lastError = nil, devices = {} }
+        state = { ready = false, online = false, lastUpdate = 0, lastError = nil, devices = {}, paused = {} }
     }
     for name, fn in pairs(Gateway) do self[name] = fn end
 

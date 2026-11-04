@@ -102,10 +102,13 @@ jego sensora.
 ```lua
 garaz:isOnline()                      -- czy cokolwiek na tej bramce odpowiada
 garaz:getValue("pralnia", "power")    -- pojedyncza wartość
-garaz:getDevice("pralnia")            -- { online, lastError, values }
+garaz:getDevice("pralnia")            -- { online, lastError, values, paused }
 garaz:listDevices()                   -- lista urządzeń tej bramki
 garaz:refresh()                       -- wymuś odczyt teraz
 garaz:stop() / garaz:start()          -- zatrzymaj i wznów poller
+garaz:pause("ladowarka")              -- nie odpytuj jednego licznika (np. bez zasilania)
+garaz:resume("ladowarka")             -- odpytuj go znowu od następnego cyklu
+garaz:isPaused("ladowarka")
 garaz:getStats()                      -- liczniki transakcji i błędów
 
 -- Surowy odczyt urządzenia bez profilu
@@ -117,6 +120,8 @@ end)
 -- Zapis pojedynczego rejestru (FC06)
 garaz:write({ unit = 5, addr = 0x0020, value = 3 }, function(echo, err) end)
 ```
+
+`pause()` jest dla licznika, który czasem traci zasilanie, np. za stycznikiem ładowarki. Bez prądu licznik milczy, a każdy cykl czeka wtedy na jego timeouty i loguje `partial read`. Wstrzymany licznik jest pomijany i ma `online = false` do `resume()`; jego sensory i `getValue` dalej oddają ostatnie wartości, więc moc sprawdzaj razem z `isPaused()` albo `_online`. `pause()` nie wysyła `modbus:device_offline`. Obie metody zwracają `false` dla nieznanego id, a `resume()` także dla licznika, który nie był wstrzymany. Wstrzymanie żyje tylko w pamięci: po przeładowaniu moduł ma je ustawić od nowa, np. ze stanu stycznika. Po `resume()` daj licznikowi chwilę na start: pierwszy odczyt bywa jeszcze timeoutem.
 
 Na poziomie pluginu:
 
