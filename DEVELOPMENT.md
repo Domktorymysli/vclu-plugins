@@ -878,6 +878,13 @@ Without the field a plugin gets none of them (vCLU 1.10+); declare `"permissions
 needs none. A plugin that talks to a device whose address the user gives in `create(opts)`
 needs `lan`.
 
+### Events
+
+Events a plugin emits start with its prefix, so it cannot pass for another integration:
+an official plugin's short id or the id's first word (`sun-position` emits `sun:rise`), any
+other plugin's full id (`@jan/foo` emits `@jan/foo:changed`). `init`, `cleanup` and `timers`
+of the instance belong to vCLU; a poller and an expose handle are used through their methods.
+
 ---
 
 ## Factory Plugins
