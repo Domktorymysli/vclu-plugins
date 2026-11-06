@@ -85,6 +85,8 @@ plugins/my-plugin/
   "author": "your-name",
   "license": "MIT",
 
+  "permissions": { "lan": true },
+
   "requires": {
     "vclu": ">=1.0.0"
   },
@@ -582,6 +584,8 @@ plugin:clearTimer(intervalId)
 
 ### MQTT
 
+Needs `"mqtt": true` in the permissions of `plugin.json`.
+
 ```lua
 -- Publish string
 plugin:mqttPublish("home/status", "online")
@@ -853,6 +857,26 @@ Plugins run in an isolated sandbox:
 | Plugin API (all methods above) | File system access |
 
 All resources (timers, subscriptions, events) are automatically cleaned up when plugin unloads.
+
+`string`, `table` and `math` are the plugin's own copies; `Logger`, `JSON` and `Plugin`
+cannot be modified, and there is no `HTTP` or `MQTT` global: use `plugin:httpRequest` and
+`plugin:mqttSubscribe`. Objects the plugin did not create, other plugins included, are
+read-only: only `get`, `getX`, `isX` and `hasX` methods can be called on them, and another
+plugin shows only its sensors and controls.
+
+### Permissions
+
+HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
+
+| Permission | Gives |
+|------------|-------|
+| `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
+| `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
+| `"modbus": true` | the `Modbus` table (requests, reads and writes) |
+
+Without the field a plugin gets none of them (vCLU 1.10+); declare `"permissions": {}` when it
+needs none. A plugin that talks to a device whose address the user gives in `create(opts)`
+needs `lan`.
 
 ---
 

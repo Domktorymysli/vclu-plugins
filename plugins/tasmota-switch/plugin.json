@@ -3,6 +3,7 @@
   "name": "Tasmota Switch",
   "version": "1.0.3",
   "description": "Factory for Tasmota switch objects (Sonoff, etc.)",
+  "permissions": {"lan": true},
   "author": "vCLU",
   "config": {}
 }
