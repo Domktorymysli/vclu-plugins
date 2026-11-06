@@ -525,6 +525,11 @@ local sensor = plugin:getObject("sensor")
 local clu = plugin:getObject("CLU.DOU5998")
 ```
 
+### Plugin id
+
+The namespace and the id are lower case: `a-z`, digits, `.`, `_` and `-`, with no `--` and no
+`-` at either end (`@jan/my-plugin`). vCLU refuses any other id.
+
 ### Events
 
 #### `plugin:emit(name, data, opts)`
