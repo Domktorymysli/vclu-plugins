@@ -879,7 +879,7 @@ HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
 
-Without the field a plugin gets none of them (vCLU 1.10+); declare `"permissions": {}` when it
+Without the field a plugin gets none of them (vCLU 1.11+); declare `"permissions": {}` when it
 needs none. A plugin that talks to a device whose address the user gives in `create(opts)`
 needs `lan`.
 
