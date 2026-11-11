@@ -318,19 +318,14 @@ end)
 ]]
 
 --------------------------------------------------------------------------------
--- PRZYKŁAD: Dostęp do innych pluginów (bez zmian)
+-- PRZYKŁAD: Dostęp do innych pluginów
 --------------------------------------------------------------------------------
 --[[
-local weather = Plugin.getPlugin("@vclu/weather")
-if weather then
-    local temp = weather:getTemperature()
-    plugin:log("info", "Weather temp: " .. tostring(temp))
-end
-
--- Lista wszystkich pluginów
-local all = Plugin.list()
-for _, p in ipairs(all) do
-    plugin:log("debug", "Loaded: " .. p.id)
+-- Inny plugin jest tylko do odczytu: jego czujniki i kontrolki, bez configu i metod.
+local other = Plugin.getPlugin("@jan/inny-plugin")
+local sensor = other and other:get("value")
+if sensor then
+    plugin:log("info", "value: " .. tostring(sensor:get()))
 end
 ]]
 

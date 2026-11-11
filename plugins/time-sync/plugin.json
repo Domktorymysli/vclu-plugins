@@ -3,6 +3,7 @@
   "name": "Time Sync",
   "version": "1.0.1",
   "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
+  "permissions": {},
   "author": "vCLU",
   "license": "MIT",
 

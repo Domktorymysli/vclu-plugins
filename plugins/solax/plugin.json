@@ -3,6 +3,7 @@
   "name": "SolaX Inverter",
   "version": "1.0.2",
   "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html, bez chmury)",
+  "permissions": {"lan": true},
   "author": "tytus",
   "license": "MIT",
 

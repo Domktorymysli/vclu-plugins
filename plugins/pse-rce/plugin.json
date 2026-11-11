@@ -3,6 +3,7 @@
   "name": "Ceny energii RCE (PSE)",
   "version": "0.1.0",
   "description": "Factory for PSE market energy prices (RCE): today and tomorrow every 15 minutes, cheapest hours by RCE, optional own price formula",
+  "permissions": {},
   "author": "vCLU",
   "config": {}
 }

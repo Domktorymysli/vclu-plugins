@@ -5,6 +5,7 @@
   "author": "vCLU Team",
   "license": "MIT",
   "description": "Przykładowy plugin pokazujący jak pisać własne pluginy dla vCLU z expose API",
+  "permissions": {"lan": true},
 
   "docs": [
     { "title": "Getting Started", "file": "README.md" }

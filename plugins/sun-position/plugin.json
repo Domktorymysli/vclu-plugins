@@ -3,6 +3,7 @@
   "name": "Sun Position & Astronomy",
   "version": "1.0.0",
   "description": "Pozycja słońca, wschody/zachody, fazy księżyca - do automatyzacji rolet i oświetlenia",
+  "permissions": {},
   "author": "vCLU",
   "license": "MIT",
 

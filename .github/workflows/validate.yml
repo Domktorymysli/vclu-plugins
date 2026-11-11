@@ -48,6 +48,12 @@ jobs:
               exit 1
             fi
 
+            # Permissions are declared, with known keys only (an empty object grants none)
+            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus"] | length) == 0' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus"
+              exit 1
+            fi
+
             # Check init.lua exists
             if [ ! -f "$dir/init.lua" ]; then
               echo "ERROR: Missing init.lua in $dir"
