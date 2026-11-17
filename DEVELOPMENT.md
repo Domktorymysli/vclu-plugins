@@ -85,6 +85,7 @@ plugins/my-plugin/
   "author": "your-name",
   "license": "MIT",
 
+  "api": 2,
   "permissions": { "lan": true },
 
   "requires": {
@@ -864,14 +865,29 @@ Plugins run in an isolated sandbox:
 All resources (timers, subscriptions, events) are automatically cleaned up when plugin unloads.
 
 `string`, `table` and `math` are the plugin's own copies; `Logger`, `JSON` and `Plugin`
-cannot be modified, and there is no `HTTP` or `MQTT` global: use `plugin:httpRequest` and
-`plugin:mqttSubscribe`. Objects the plugin did not create, other plugins included, are
+cannot be modified, and on plugin API 2 there is no `HTTP` or `MQTT` global: use
+`plugin:httpRequest` and `plugin:mqttSubscribe`. Objects the plugin did not create, other plugins included, are
 read-only: only `get`, `getX`, `isX` and `hasX` methods can be called on them, and another
 plugin shows only its sensors and controls.
 
+### Plugin API version
+
+`"api"` in `plugin.json` names the contract the plugin is written for. New plugins use `2`.
+
+| `api` | Contract |
+|-------|----------|
+| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run unchanged; vCLU logs a notice. |
+| `2` | Only the declared permissions, events and expose paths under the plugin's prefix, HTTP and MQTT through the plugin API. |
+
+The isolation above holds on every version. A plugin for a newer API than the vCLU it is
+installed on does not load and says to update vCLU; `Plugin.apiVersion` is the highest
+version the runtime runs. A vCLU in strict mode (`"strict": true` in the `plugins` section of
+`.vclu.json`) loads only API 2 or later. A vCLU from before plugin API versions ignores the field
+and runs every plugin on the old contract.
+
 ### Permissions
 
-HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
+On plugin API 2, HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
 
 | Permission | Gives |
 |------------|-------|
@@ -879,13 +895,13 @@ HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
 
-Without the field a plugin gets none of them (vCLU 1.11+); declare `"permissions": {}` when it
-needs none. A plugin that talks to a device whose address the user gives in `create(opts)`
+Without the field an API 2 plugin gets none of them; declare `"permissions": {}` when it needs
+none. A plugin that talks to a device whose address the user gives in `create(opts)`
 needs `lan`.
 
 ### Events
 
-Events a plugin emits start with its prefix, so it cannot pass for another integration:
+On plugin API 2, events a plugin emits start with its prefix, so it cannot pass for another integration:
 an official plugin's short id or the id's first word (`sun-position` emits `sun:rise`), any
 other plugin's full id (`@jan/foo` emits `@jan/foo:changed`). `init`, `cleanup` and `timers`
 of the instance belong to vCLU; a poller and an expose handle are used through their methods.
