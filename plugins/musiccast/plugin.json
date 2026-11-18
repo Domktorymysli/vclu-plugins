@@ -3,6 +3,8 @@
   "name": "Yamaha MusicCast",
   "version": "0.2.0",
   "description": "Factory for Yamaha MusicCast devices over the local YXC API",
+  "api": 2,
+  "permissions": {"lan": true},
   "author": "vCLU",
   "config": {}
 }

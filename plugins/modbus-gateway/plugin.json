@@ -3,6 +3,8 @@
   "name": "Modbus Gateway",
   "version": "2.1.0",
   "description": "Fabryka bramek Modbus RTU po RS485-Ethernet (Waveshare RS485 TO ETH, USR, Elfin). Bramki deklarujesz w kodzie przez create(), wiec jedno vCLU obsluguje ich dowolnie wiele.",
+  "api": 2,
+  "permissions": {"modbus": true},
   "author": "tytus",
   "license": "MIT",
   "docs": [

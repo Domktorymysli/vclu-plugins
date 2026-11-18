@@ -3,6 +3,8 @@
   "name": "Salda Recuperator",
   "version": "2.1.1",
   "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie z expose API",
+  "api": 2,
+  "permissions": {"lan": true},
   "author": "vCLU",
   "license": "MIT",
 

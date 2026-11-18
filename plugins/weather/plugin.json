@@ -5,6 +5,8 @@
   "author": "tytus",
   "license": "MIT",
   "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
+  "api": 2,
+  "permissions": {},
   "docs": [
     {
       "title": "Getting Started",
