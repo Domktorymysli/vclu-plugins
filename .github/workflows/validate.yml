@@ -49,12 +49,14 @@ jobs:
             fi
 
             # Plugin API 2, and its permissions declared with known keys only (an empty object grants none)
-            if ! jq -e '.api == 2' "$dir/plugin.json" > /dev/null; then
+            # vclu reads api as an integer and permissions as booleans: 2.0 or "yes" would not load
+            if ! jq -e '(.api | type) == "number" and .api == 2' "$dir/plugin.json" > /dev/null \
+              || ! grep -Eq '"api"[[:space:]]*:[[:space:]]*2[[:space:]]*([,}]|$)' "$dir/plugin.json"; then
               echo "ERROR: $dir/plugin.json needs \"api\": 2"
               exit 1
             fi
-            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0' "$dir/plugin.json" > /dev/null; then
-              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus, grenton_raw, tftp, serial"
+            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0 and all(.permissions[]; type == "boolean")' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus, grenton_raw, tftp, serial set to true or false"
               exit 1
             fi
 

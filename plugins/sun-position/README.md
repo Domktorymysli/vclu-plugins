@@ -26,14 +26,14 @@ Pozycja słońca, wschody/zachody słońca, fazy księżyca - idealne do automat
 
 ```lua
 -- Wschód słońca
-plugin:on("sun:rise", function(data)
+EventBus:getShared():on("sun:rise", function(data)
     print("Wschód słońca: " .. data.time)
     -- Otwórz rolety
     Rolety:execute("open")
 end)
 
 -- Zachód słońca
-plugin:on("sun:set", function(data)
+EventBus:getShared():on("sun:set", function(data)
     print("Zachód słońca: " .. data.time)
     -- Zamknij rolety, włącz światła
     Rolety:execute("close")
@@ -41,12 +41,12 @@ plugin:on("sun:set", function(data)
 end)
 
 -- Południe słoneczne
-plugin:on("sun:noon", function(data)
+EventBus:getShared():on("sun:noon", function(data)
     print("Południe: " .. data.time .. ", elevation: " .. data.elevation .. "°")
 end)
 
 -- Zmiana pozycji słońca (co 10 min)
-plugin:on("sun:position", function(data)
+EventBus:getShared():on("sun:position", function(data)
     print("Azymut: " .. data.azimuth .. "°, Elevacja: " .. data.elevation .. "°")
 end)
 ```
@@ -132,7 +132,7 @@ Plugin tworzy obiekty:
 
 ```lua
 -- Każda fasada reaguje tylko gdy słońce na nią świeci
-plugin:on("sun:position", function(data)
+EventBus:getShared():on("sun:position", function(data)
     local sun = Plugin.getPlugin("@vclu/sun-position")
 
     -- Fasada wschodnia (45° - 135°)
@@ -155,7 +155,7 @@ end)
 ### Oświetlenie na podstawie zmierzchu
 
 ```lua
-plugin:on("sun:position", function(data)
+EventBus:getShared():on("sun:position", function(data)
     local sun = Plugin.getPlugin("@vclu/sun-position")
 
     if sun:isTwilight() then
@@ -174,7 +174,7 @@ end)
 
 ```lua
 -- W konfiguracji: sunriseOffset: -30 (30 min przed wschodem)
-plugin:on("sun:rise", function(data)
+EventBus:getShared():on("sun:rise", function(data)
     -- Stopniowo otwieraj rolety
     Rolety:execute("setPosition", 20)
 

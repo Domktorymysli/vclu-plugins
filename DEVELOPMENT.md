@@ -58,9 +58,8 @@ plugin:kvHas(key)
 plugin:kvList(prefix)
 plugin:kvGetAll()
 
--- Access other plugins
-local other = Plugin.getPlugin("@vclu/weather")
-local all = Plugin.list()
+-- Another plugin: read-only, its sensors and controls
+local other = Plugin.getPlugin("@jan/other-plugin")
 ```
 
 ---
@@ -779,19 +778,15 @@ plugin:kvSet("feature_enabled", true)
 ### Plugin Access
 
 ```lua
--- Get another plugin
-local weather = Plugin.getPlugin("@vclu/weather")
-if weather then
-    local temp = weather:getTemperature()
-    plugin:log("info", "Temperature: " .. tostring(temp))
-end
-
--- List all plugins
-local plugins = Plugin.list()
-for _, p in ipairs(plugins) do
-    plugin:log("debug", p.id .. " v" .. p.version)
+-- Another plugin is read-only: its sensors and controls, not its config or methods
+local other = Plugin.getPlugin("@jan/other-plugin")
+local sensor = other and other:get("value")
+if sensor then
+    plugin:log("info", "value: " .. tostring(sensor:get()))
 end
 ```
+
+A module (not a plugin) calls another plugin's methods as before, e.g. `Plugin.getPlugin("@vclu/telegram"):send(...)`.
 
 ---
 

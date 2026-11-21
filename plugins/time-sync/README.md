@@ -68,18 +68,18 @@ time:getLastSync()               -- timestamp ostatniej sync
 
 ```lua
 -- Czas zsynchronizowany
-plugin:on("time:synced", function(data)
+EventBus:getShared():on("time:synced", function(data)
     print("Czas: " .. data.datetime)
     print("Drift: " .. data.drift .. "s")
 end)
 
 -- Zmiana godziny (do automatyzacji)
-plugin:on("time:hourChanged", function(data)
+EventBus:getShared():on("time:hourChanged", function(data)
     print("Nowa godzina: " .. data.hour)
 end)
 
 -- Błąd synchronizacji
-plugin:on("time:error", function(data)
+EventBus:getShared():on("time:error", function(data)
     print("Błąd: " .. data.error)
 end)
 ```
@@ -107,7 +107,7 @@ Plugin tworzy obiekt `plugins.vclu.time-sync.current`:
 ### Automatyzacja oparta na czasie
 
 ```lua
-plugin:on("time:hourChanged", function(data)
+EventBus:getShared():on("time:hourChanged", function(data)
     local time = Plugin.getPlugin("@vclu/time-sync")
 
     -- Włącz światła o 18:00 w dni robocze

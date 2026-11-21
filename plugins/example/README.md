@@ -186,18 +186,11 @@ expose(myPlugin:get("setpoint"), "number", {
 ### Dostęp do innych pluginów
 
 ```lua
--- Pobierz instancję innego pluginu
-local weather = Plugin.getPlugin("@vclu/weather")
-
-if weather then
-    local temp = weather:getTemperature()
-    plugin:log("info", "Temperatura: " .. tostring(temp))
-end
-
--- Lista wszystkich załadowanych pluginów
-local plugins = Plugin.list()
-for _, p in ipairs(plugins) do
-    plugin:log("info", "Plugin: " .. p.name .. " v" .. p.version)
+-- Inny plugin jest tylko do odczytu: jego czujniki i kontrolki, bez configu i metod
+local other = Plugin.getPlugin("@jan/inny-plugin")
+local sensor = other and other:get("value")
+if sensor then
+    plugin:log("info", "value: " .. tostring(sensor:get()))
 end
 ```
 

@@ -49,14 +49,14 @@ salda:getError()           -- Ostatni błąd (lub nil)
 
 ```lua
 -- Dane zaktualizowane
-plugin:on("salda:updated", function(data)
+EventBus:getShared():on("salda:updated", function(data)
     print("Supply: " .. data.supplyAir .. "°C")
     print("Outside: " .. data.outsideAir .. "°C")
     print("Fan: " .. data.fanSpeed)
 end)
 
 -- Błąd komunikacji
-plugin:on("salda:error", function(data)
+EventBus:getShared():on("salda:error", function(data)
     print("Error: " .. data.error)
 end)
 ```
@@ -160,7 +160,7 @@ Wszystkie encje automatycznie w pokoju "Techniczny" (dzięki `area`).
 ### Automatyczne dostosowanie wentylatora
 
 ```lua
-plugin:on("salda:updated", function(data)
+EventBus:getShared():on("salda:updated", function(data)
     local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
     -- Zwiększ wentylator gdy wilgotność > 60%
@@ -178,7 +178,7 @@ end)
 ### Integracja z pogodą
 
 ```lua
-plugin:on("weather:changed", function(weather)
+EventBus:getShared():on("weather:changed", function(weather)
     local salda = Plugin.getPlugin("@vclu/salda-recuperator")
 
     -- Gdy na zewnątrz zimno, zwiększ temperaturę nawiewu
