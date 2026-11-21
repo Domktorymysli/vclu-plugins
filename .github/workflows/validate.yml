@@ -53,8 +53,8 @@ jobs:
               echo "ERROR: $dir/plugin.json needs \"api\": 2"
               exit 1
             fi
-            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus"] | length) == 0' "$dir/plugin.json" > /dev/null; then
-              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus"
+            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus, grenton_raw, tftp, serial"
               exit 1
             fi
 

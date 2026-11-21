@@ -1,4 +1,4 @@
-# Writing vCLU Plugins
+# Writing vclu Plugins
 
 How plugins are built: the runtime API, the sandbox, factory plugins and tests.
 For the list of plugins and how to install them, see [README.md](README.md).
@@ -128,7 +128,7 @@ plugins/my-plugin/
 ## Plugin Template
 
 ```lua
---- My Plugin for vCLU
+--- My Plugin for vclu
 -- @module plugins.my-plugin
 
 --------------------------------------------------------------------------------
@@ -529,7 +529,7 @@ local clu = plugin:getObject("CLU.DOU5998")
 ### Plugin id
 
 The namespace and the id are lower case: `a-z`, digits, `.`, `_` and `-`, with no `--` and no
-`-` at either end (`@jan/my-plugin`). vCLU refuses any other id.
+`-` at either end (`@jan/my-plugin`). vclu refuses any other id.
 
 ### Events
 
@@ -607,6 +607,43 @@ plugin:mqttSubscribe("home/+/set", function(topic, payload)
     plugin:log("info", topic .. " = " .. payload)
 end)
 ```
+
+### Grenton frames, TFTP and serial ports
+
+Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
+They reach a CLU's commands, files on devices and whatever is on a port, so installing a plugin
+does not allow them: the user does, on the plugins page, after a warning. Until then the methods
+below raise an error. The user can also limit `grenton_raw` and `tftp` to some hosts, and assigns
+the serial ports. Neither the socket nor the TFTP client reaches the vclu the plugin runs in or
+anything outside the local network.
+
+```lua
+-- grenton_raw: a UDP socket of the plugin's own (port 0: any free one)
+local socket, err = plugin:grentonSocket({ port = 0 })
+socket:onReceive(function(bytes, ip, port) end)
+socket:send("192.168.1.10", 1234, frame)   -- true, or nil and an error
+socket:broadcast(1234, frame)               -- only to the CLU port, for discovery
+socket:close()
+
+-- grenton_raw: the CLU cipher; key and IV raw or in base64, as in the CLU's configuration.
+-- The plugin brings the key (its config); vclu does not hand out its own.
+local cipher = plugin:grentonCipher(config.key, config.iv)
+local plain, err = cipher:decrypt(bytes)
+local frame = cipher:encrypt("req:...")
+
+-- tftp: reading and writing files on a device
+local device = plugin:tftp("192.168.1.10", { port = 69 })
+device:get("a.lua", function(bytes, err) end)
+device:put("a.lua", bytes, function(ok, err) end)
+
+-- serial: only a port the user assigned to the plugin
+local port, err = plugin:serialOpen("/dev/ttyUSB0", { baud = 9600, data = 8, parity = "none", stop = 1 })
+port:onData(function(bytes, err) end)  -- (nil, err) once, when the port fails
+port:write(bytes)
+port:close()
+```
+
+Bytes are Lua strings. Sockets and ports close when the plugin is disabled or removed.
 
 ### Type Coercion
 
@@ -876,13 +913,13 @@ plugin shows only its sensors and controls.
 
 | `api` | Contract |
 |-------|----------|
-| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run unchanged; vCLU logs a notice. |
+| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run unchanged; vclu logs a notice. |
 | `2` | Only the declared permissions, events and expose paths under the plugin's prefix, HTTP and MQTT through the plugin API. |
 
-The isolation above holds on every version. A plugin for a newer API than the vCLU it is
-installed on does not load and says to update vCLU; `Plugin.apiVersion` is the highest
-version the runtime runs. A vCLU in strict mode (`"strict": true` in the `plugins` section of
-`.vclu.json`) loads only API 2 or later. A vCLU from before plugin API versions ignores the field
+The isolation above holds on every version. A plugin for a newer API than the vclu it is
+installed on does not load and says to update vclu; `Plugin.apiVersion` is the highest
+version the runtime runs. A vclu in strict mode (`"strict": true` in the `plugins` section of
+`.vclu.json`) loads only API 2 or later. A vclu from before plugin API versions ignores the field
 and runs every plugin on the old contract.
 
 ### Permissions
@@ -894,6 +931,9 @@ On plugin API 2, HTTP to the internet needs nothing. Anything else is declared i
 | `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
+| `"grenton_raw": true` | a UDP socket and the CLU cipher (see below); the user allows it in the panel |
+| `"tftp": true` | a TFTP client (see below); the user allows it in the panel |
+| `"serial": true` | a serial port the user assigns to the plugin (see below) |
 
 Without the field an API 2 plugin gets none of them; declare `"permissions": {}` when it needs
 none. A plugin that talks to a device whose address the user gives in `create(opts)`
@@ -904,7 +944,7 @@ needs `lan`.
 On plugin API 2, events a plugin emits start with its prefix, so it cannot pass for another integration:
 an official plugin's short id or the id's first word (`sun-position` emits `sun:rise`), any
 other plugin's full id (`@jan/foo` emits `@jan/foo:changed`). `init`, `cleanup` and `timers`
-of the instance belong to vCLU; a poller and an expose handle are used through their methods.
+of the instance belong to vclu; a poller and an expose handle are used through their methods.
 
 ---
 
@@ -930,7 +970,7 @@ Pitfalls found the hard way:
 - **Methods and state share one table.** A field named like a method replaces
   it at the first assignment (`self._playback = "play"` kills
   `self:_playback()`). Keep state under different names than methods.
-- **Duplicate ids.** Sensor and poller names are flat across vCLU. Derive them
+- **Duplicate ids.** Sensor and poller names are flat across vclu. Derive them
   from the instance `id`, and on a duplicate log an error and return the
   existing instance instead of replacing it.
 - **KV is per plugin, not per instance.** Prefix keys with the instance id:
@@ -964,7 +1004,7 @@ That object follows the expose contract:
 ## Testing
 
 `test/harness.lua` stands in for the runtime, so a plugin runs under a bare
-`lua` with no vCLU. Responses follow the runtime: an HTTP responder returns
+`lua` with no vclu. Responses follow the runtime: an HTTP responder returns
 `{ status, json }` or `{ err }`, and a status outside 2xx arrives with
 `resp.err = "HTTP <status>"`.
 
@@ -1015,4 +1055,4 @@ Create your own plugin repository:
 }
 ```
 
-2. Add repository in vCLU Web UI: **Settings > Plugin Repositories**
+2. Add repository in vclu Web UI: **Settings > Plugin Repositories**
