@@ -908,7 +908,7 @@ plugin shows only its sensors and controls.
 
 | `api` | Contract |
 |-------|----------|
-| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run unchanged; vclu logs a notice. |
+| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run without changing their manifest; the isolation above still applies (no methods on objects the plugin did not create, no `Plugin.list`). vclu logs a notice. |
 | `2` | Only the declared permissions, events and expose paths under the plugin's prefix, HTTP and MQTT through the plugin API. |
 
 The isolation above holds on every version. A plugin for a newer API than the vclu it is
