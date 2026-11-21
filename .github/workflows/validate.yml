@@ -50,8 +50,7 @@ jobs:
 
             # Plugin API 2, and its permissions declared with known keys only (an empty object grants none)
             # vclu reads api as an integer and permissions as booleans: 2.0 or "yes" would not load
-            if ! jq -e '(.api | type) == "number" and .api == 2' "$dir/plugin.json" > /dev/null \
-              || ! grep -Eq '"api"[[:space:]]*:[[:space:]]*2[[:space:]]*([,}]|$)' "$dir/plugin.json"; then
+            if ! python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); sys.exit(0 if type(m.get("api")) is int and m["api"] == 2 else 1)' "$dir/plugin.json"; then
               echo "ERROR: $dir/plugin.json needs \"api\": 2"
               exit 1
             fi

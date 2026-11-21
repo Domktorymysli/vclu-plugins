@@ -86,13 +86,13 @@ Plugin emituje eventy które można nasłuchiwać:
 -- W onInit lub innym pluginie:
 
 -- Gdy zmieni się pogoda
-EventBus:on("weather:changed", function(data)
+EventBus:getShared():on("weather:changed", function(data)
     print("Nowa temperatura: " .. data.temp)
     print("Warunki: " .. data.condition)
 end)
 
 -- Gdy zacznie padać
-EventBus:on("weather:rain", function(data)
+EventBus:getShared():on("weather:rain", function(data)
     print("Pada! " .. data.rain .. " mm/h")
     -- automatycznie zamknij markizy
 end)

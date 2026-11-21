@@ -153,9 +153,9 @@ się błędem `illegal data address`. Urządzenia z własną mapą są czytane p
 ## Zdarzenia
 
 ```lua
-EventBus:on("modbus:updated", function(data) end)
-EventBus:on("modbus:error", function(data) Logger:warn(data.gateway .. ": " .. data.error) end)
-EventBus:on("modbus:device_offline", function(data)
+EventBus:getShared():on("modbus:updated", function(data) end)
+EventBus:getShared():on("modbus:error", function(data) Logger:warn(data.gateway .. ": " .. data.error) end)
+EventBus:getShared():on("modbus:device_offline", function(data)
     Logger:warn("Licznik " .. data.device .. " (unit " .. data.unit .. ") milczy")
 end)
 ```
