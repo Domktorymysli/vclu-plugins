@@ -934,6 +934,9 @@ Without the field an API 2 plugin gets none of them; declare `"permissions": {}`
 none. A plugin that talks to a device whose address the user gives in `create(opts)`
 needs `lan`.
 
+`Crypto` (hashes, HMAC, AES, random bytes, hex and base64) and `bit` (LuaJIT BitOp) need no
+permission on either API; the plugin gets its own copies. See the Lua reference on docs.vclu.pl.
+
 ### Events
 
 On plugin API 2, events a plugin emits start with its prefix, so it cannot pass for another integration:
