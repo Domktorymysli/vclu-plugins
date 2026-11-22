@@ -83,7 +83,7 @@ end
 Plugin emituje eventy które można nasłuchiwać:
 
 ```lua
--- W onInit lub innym pluginie:
+-- W module (modules/<domena>/init.lua):
 
 -- Gdy zmieni się pogoda
 EventBus:getShared():on("weather:changed", function(data)
