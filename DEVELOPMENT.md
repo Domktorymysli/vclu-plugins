@@ -677,6 +677,26 @@ plugin:logSafe("info", "API request", {
 
 **Auto-redacted fields:** `token`, `password`, `apiKey`, `secret`, `key`, `auth`, `bearer`
 
+### Secrets
+
+A token or a password the user types in the plugin's wizard (a `"type": "secret"` field of its
+form, vclu 1.13+) is kept apart from the plugin's config and reaches only the plugin:
+
+```lua
+plugin:onInit(function(cfg)
+    local token = plugin:secret("token")   -- nil when the user did not set it
+    plugin:httpRequest({ url = cfg.url, headers = { Authorization = plugin:bearerAuth(token) } },
+        function(resp)
+            if resp.err then plugin:log("error", "status: " .. resp.err) end
+        end)
+end)
+```
+
+Keep it in a local variable. **Never put a secret in a sensor, an exposed object,
+`createObject`/`upsertObject`, an event or a log line:** other plugins, agents and MQTT/Home
+Assistant read those. vclu masks the plugin's secret values as `***` in what it logs
+(`plugin:log`, `plugin:logSafe`, `Logger`, `print`), as a safety net, not as a way to log them.
+
 ### Persistence (KV Store)
 
 Persistent key-value storage for plugin state across restarts.
