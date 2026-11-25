@@ -178,12 +178,12 @@ check("clear_all asks for confirm in its spec", env.actions.clear_all.spec.param
 
 local d = env.dashboards.zakupy_lista
 check("dashboard zakupy_lista built with defaults", d and d.built and d.name == "Zakupy" and d.auth == "session")
-local list, input = d.widgets.items, d.widgets.add
-check("a list and an input", list and list.type == "list" and input and input.type == "input")
+local list = d.widgets.items
+check("one list, adding is its own field", list and list.type == "list" and d.widgets.add == nil)
 
-check("input adds", env.submit("zakupy_lista", "add", "  mleko, 2 jajka ") == true and labels() == "mleko|jajkax2")
-ok, err = env.submit("zakupy_lista", "add", "mleko")
-check("input: already on the list is said", ok == false and err == "Już na liście: mleko")
+check("the list's field adds", env.submit("zakupy_lista", "items", "  mleko, 2 jajka ") == true and labels() == "mleko|jajkax2")
+ok, err = env.submit("zakupy_lista", "items", "mleko")
+check("already on the list is said", ok == false and err == "Już na liście: mleko")
 check("list onAdd adds", list.opts.onAdd("chleb") == true and labels() == "mleko|jajkax2|chleb")
 
 local rows = list.getItems()

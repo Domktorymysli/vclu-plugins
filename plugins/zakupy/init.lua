@@ -486,7 +486,6 @@ local function buildDashboard(cfg)
         :auth(auth)
         :poll(5)
         :section("Lista", "cart")
-        :input("add", "Dodaj", "plus-lg", addFromDashboard, { placeholder = "mleko, 2 chleby i masło" })
         :list("items", "Do kupienia", function()
             local out = {}
             for i, it in ipairs(plugin:items()) do
@@ -495,7 +494,7 @@ local function buildDashboard(cfg)
             return out
         end, {
             icon = "cart",
-            placeholder = "Dodaj produkt",
+            placeholder = "mleko, 2 chleby i masło",
             empty = "Lista jest pusta",
             onToggle = function(id, done) plugin:setDone(id, done) end,
             onDelete = function(id) plugin:removeId(id) end,

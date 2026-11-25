@@ -299,13 +299,14 @@ function M.install(opts)
         local w = env.dashboards[dashId].widgets[widgetId]
         text = tostring(text):gsub("^%s+", ""):gsub("%s+$", "")
         if text == "" then return nil end
-        return w.onSubmit(text)
+        -- an input's onSubmit, or the add field of a list
+        return (w.onSubmit or w.opts.onAdd)(text)
     end
 
     -- Actions for agents and voice: plugin:action(name, spec, fn). The stub checks the spec
     -- and env.callAction checks params against it before calling fn, as the runtime does.
     env.actions = {}
-    local PARAM_TYPES = { string = "string", number = "number", integer = "number", boolean = "boolean" }
+    local PARAM_TYPES = { string = "string", number = "number", boolean = "boolean" }
     function Plugin:action(name, spec, f)
         if type(name) ~= "string" or not name:match("^[%a][%w_]*$") then error("action(name): name is [a-z_]", 2) end
         if env.actions[name] then error('action("' .. name .. '"): defined twice', 2) end
