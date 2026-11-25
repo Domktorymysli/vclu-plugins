@@ -195,11 +195,11 @@ check("and back", labels() == "mleko|jajkax2|chleb")
 list.opts.onDelete(rows[3].id)
 check("delete", labels() == "mleko|jajkax2")
 
-check("status counts what is left", d.widgets.left.getValue() == 2)
+check("no separate counter: the list shows it", d.widgets.left == nil)
 local clearDone, clearAll = d.widgets.clear_done, d.widgets.clear_all
 check("nothing bought: clear_done disabled", clearDone.opts.disabled() == true)
 plugin:done("mleko")
-check("status after done", d.widgets.left.getValue() == 1 and clearDone.opts.disabled() == false)
+check("something bought: clear_done enabled", clearDone.opts.disabled() == false)
 clearDone.onTap()
 check("Usuń kupione", labels() == "jajkax2")
 check("Wyczyść wszystko is held", clearAll.opts.hold == true)

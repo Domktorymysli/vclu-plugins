@@ -500,7 +500,6 @@ local function buildDashboard(cfg)
             onDelete = function(id) plugin:removeId(id) end,
             onAdd = addFromDashboard,
         })
-        :status("left", "Do kupienia", "basket", function() return #pendingItems() end, nil)
         :button("clear_done", "Usuń kupione", "check2-all", function() plugin:clearDone() end, {
             disabled = function()
                 for _, it in ipairs(items) do
