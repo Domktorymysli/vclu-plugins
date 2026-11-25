@@ -220,6 +220,24 @@ plugin = dofile(here .. "/init.lua")
 plugin._init({ dashboardAuth = "everyone" })
 check("an unknown access is session", env.dashboards.zakupy_lista.auth == "session")
 
+check("no cloud unless asked", d.remote == nil)
+
+env.dashboards = {}
+env.actions = {}
+plugin = dofile(here .. "/init.lua")
+plugin._init({ remote = true, remotePin = true, roles = "Domownicy, gosia;zła rola ,kasia" })
+d = env.dashboards.zakupy_lista
+check("in the app with the PIN", d.remote and d.remote.pin == true)
+check("roles from the wizard, a bad one left out and logged",
+    table.concat(d.remote.roles, ",") == "domownicy,gosia,kasia" and env.log[#env.log - 1]:find("role skipped"))
+
+env.dashboards = {}
+env.actions = {}
+plugin = dofile(here .. "/init.lua")
+plugin._init({ remote = true, roles = "" })
+d = env.dashboards.zakupy_lista
+check("no roles: every member of the home", d.remote and #d.remote.roles == 0 and d.remote.pin == false)
+
 env.dashboards = {}
 env.actions = {}
 plugin = dofile(here .. "/init.lua")

@@ -10,10 +10,13 @@ Wymaga vclu 1.13.
 Pluginy → Lista zakupów → Konfiguruj. Ustawienia są opcjonalne, bez kreatora plugin działa
 z domyślnymi:
 
-- **Dashboard listy**: włączony; lista jest pod `/d/zakupy_lista`;
-- **Nazwa dashboardu**: domyślnie „Zakupy”;
-- **Dostęp do dashboardu**: `session` (zalogowani do panelu), `pin` (PIN dashboardu) albo
-  `public` (każdy w sieci).
+- **Pokaż listę na dashboardzie**: włączone; lista jest pod `/d/zakupy_lista`;
+- **Nazwa**: domyślnie „Zakupy”;
+- **Kto może otworzyć listę**: zalogowani do panelu, z kodem PIN albo każdy w sieci domowej;
+- **Lista poza domem, w aplikacji vclu**: dashboard w aplikacji przez chmurę vclu, także w sklepie.
+  Do tego opcjonalnie PIN w aplikacji i **role**: nazwy ról z chmury po przecinku
+  (np. `domownicy, gosia`). Bez ról listę widzą wszyscy domownicy. Rola z innymi znakami niż
+  `a-z`, `0-9`, `-` i `_` jest pomijana z wpisem w logu.
 
 ## Dashboard
 

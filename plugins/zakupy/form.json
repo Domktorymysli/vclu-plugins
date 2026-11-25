@@ -18,6 +18,20 @@
       },
       "label": { "pl": "Kto może otworzyć listę", "en": "Who can open the list" },
       "description": { "pl": "„Każdy w sieci domowej” wygodny na tablecie w kuchni, bez logowania", "en": "\"Anyone at home\" suits a kitchen tablet, no sign-in" }
+    },
+    "remote": {
+      "type": "boolean", "default": false, "showIf": { "dashboard": true },
+      "label": { "pl": "Lista poza domem, w aplikacji vclu", "en": "The list away from home, in the vclu app" },
+      "description": { "pl": "Przez chmurę vclu: lista w telefonie także w sklepie", "en": "Through vclu cloud: the list on the phone in the shop too" }
+    },
+    "remotePin": {
+      "type": "boolean", "default": false, "showIf": { "remote": true },
+      "label": { "pl": "Wymagaj PIN-u w aplikacji", "en": "Ask for the PIN in the app" }
+    },
+    "roles": {
+      "type": "string", "showIf": { "remote": true },
+      "label": { "pl": "Kto widzi listę w aplikacji", "en": "Who sees the list in the app" },
+      "description": { "pl": "Role z chmury vclu po przecinku, np. domownicy, gosia. Puste: wszyscy domownicy", "en": "vclu cloud roles, comma separated, e.g. family, anna. Empty: every member of the home" }
     }
   }
 }

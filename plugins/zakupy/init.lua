@@ -471,6 +471,20 @@ local function addFromDashboard(text)
     return true
 end
 
+-- Roles from the wizard ("domownicy, gosia"): the names the cloud takes; others are logged and left out
+local function parseRoles(text)
+    local out = {}
+    for word in tostring(text or ""):gmatch("[^,;]+") do
+        local r = word:lower():match("^%s*(.-)%s*$")
+        if #r <= 32 and r:match("^[a-z0-9][a-z0-9_%-]*$") then
+            out[#out + 1] = r
+        elseif r ~= "" then
+            plugin:log("warn", "role skipped (a-z, 0-9, - and _): " .. r)
+        end
+    end
+    return out
+end
+
 local function buildDashboard(cfg)
     if type(plugin.dashboard) ~= "function" then
         plugin:log("warn", "this vclu has no plugin dashboards (1.13 needed)")
@@ -480,11 +494,14 @@ local function buildDashboard(cfg)
     if name == "" then name = "Zakupy" end
     local auth = AUTH[cfg.dashboardAuth] and cfg.dashboardAuth or "session"
 
-    plugin:dashboard("lista")
-        :name(name)
-        :icon("cart")
-        :auth(auth)
-        :poll(5)
+    local dash = plugin:dashboard("lista"):name(name):icon("cart"):auth(auth):poll(5)
+    -- the list in the vclu app away from home; without roles every member of the home sees it
+    if cfg.remote == true then
+        dash = dash:remote({ pin = cfg.remotePin == true })
+        local roles = parseRoles(cfg.roles)
+        if #roles > 0 then dash = dash:roles((unpack or table.unpack)(roles)) end
+    end
+    dash
         :section("Lista", "cart")
         :list("items", "Do kupienia", function()
             local out = {}

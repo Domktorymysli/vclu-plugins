@@ -253,6 +253,31 @@ function M.install(opts)
             return b
         end
         function b:poll(n) d.poll = n return b end
+        -- vclu cloud: remote({pin, poll}) then roles(...) as in core; roles need remote first
+        function b:remote(spec)
+            if spec ~= nil and spec ~= true and spec ~= false and type(spec) ~= "table" then
+                error(":remote(): nothing, true, false or a table", 2)
+            end
+            if spec == false then d.remote = nil return b end
+            spec = type(spec) == "table" and spec or {}
+            for k in pairs(spec) do
+                if k ~= "pin" and k ~= "poll" then error(':remote(): unknown option "' .. tostring(k) .. '"', 2) end
+            end
+            d.remote = { pin = spec.pin == true, poll = spec.poll, roles = {} }
+            return b
+        end
+        function b:roles(...)
+            if not d.remote then error(":roles(): call :remote() first", 2) end
+            local list = { ... }
+            if #list == 0 then error(":roles(): at least one role", 2) end
+            for _, r in ipairs(list) do
+                if type(r) ~= "string" or #r > 32 or not r:match("^[a-z0-9][a-z0-9_%-]*$") then
+                    error(':roles(): invalid role "' .. tostring(r) .. '"', 2)
+                end
+            end
+            d.remote.roles = list
+            return b
+        end
         function b:columns(n) d.columns = n return b end
         function b:section(name, icon)
             d.sections[#d.sections + 1] = { name = name, icon = icon }
