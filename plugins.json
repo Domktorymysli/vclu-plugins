@@ -251,6 +251,25 @@
         "vclu": ">=1.0.0"
       },
       "tag": "influx-metrics-v1.1.2"
+    },
+    {
+      "id": "tasmota",
+      "name": "Tasmota",
+      "version": "1.0.0",
+      "description": "Przekaźniki i pomiar mocy Tasmoty przez HTTP, z kreatorem: wyszukiwanie, expose, powiązanie z wyjściami Grentona, dashboard",
+      "author": "vCLU",
+      "path": "plugins/tasmota",
+      "tags": [
+        "tasmota",
+        "sonoff",
+        "relay",
+        "factory",
+        "wizard"
+      ],
+      "requires": {
+        "vclu": ">=1.13.0"
+      },
+      "tag": "tasmota-v1.0.0"
     }
   ]
 }

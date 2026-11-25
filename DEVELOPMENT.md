@@ -1037,7 +1037,8 @@ plugin does not use it and that methods sit on the instance
 ## Creating a New Plugin
 
 1. Copy `plugins/musiccast/` for a device (factory), or `plugins/example/`
-   for a single service configured from the panel
+   for a single service configured from the panel; `plugins/tasmota/` for a device
+   factory with a wizard (discovery, expose, binding, a dashboard)
 2. Edit `plugin.json` (id, name; `config` only for the singleton kind). The id
    is the short one, the same as in `plugins.json` (`musiccast`, not
    `@vclu/musiccast`); the runtime adds the namespace for `Plugin.getPlugin`

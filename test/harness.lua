@@ -173,6 +173,12 @@ function M.install(opts)
         return true
     end
 
+    -- Wizard: secrets from the test, discover and moduleCode kept for the test to call
+    env.secrets = {}
+    function Plugin:secret(name) return env.secrets[name] end
+    function Plugin:discover(fn) self._discover = fn end
+    function Plugin:moduleCode(fn) self._moduleCode = fn end
+
     function Plugin:upsertObject(path, data) env.objects[path] = data end
 
     function Plugin:updateObject(path, patch)

@@ -59,6 +59,16 @@ jobs:
               exit 1
             fi
 
+            # vclu refuses the whole manifest when a docs entry is not {title, file}: the plugin does not load
+            if ! jq -e '(.docs // []) | all(type == "object" and (.file | type) == "string")' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json: each docs entry is {\"title\": ..., \"file\": ...}"
+              exit 1
+            fi
+            # a wizard form is downloaded only when it is in files
+            if ! jq -e 'if .form then ((.files // ["init.lua"]) | index($f)) != null else true end' --arg f "$(jq -r '.form // ""' "$dir/plugin.json")" "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json: the form file is not in files"
+              exit 1
+            fi
             # Check init.lua exists
             if [ ! -f "$dir/init.lua" ]; then
               echo "ERROR: Missing init.lua in $dir"

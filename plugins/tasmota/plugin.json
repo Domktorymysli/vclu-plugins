@@ -1,0 +1,12 @@
+{
+  "id": "tasmota",
+  "name": "Tasmota",
+  "version": "1.0.0",
+  "description": "Tasmota relays and power meters over HTTP, with a wizard: discovery, expose, binding to Grenton outputs, a dashboard",
+  "api": 2,
+  "permissions": {"lan": true},
+  "author": "vCLU",
+  "form": "form.json",
+  "files": ["init.lua", "form.json", "README.md"],
+  "docs": [{ "title": "README", "file": "README.md" }]
+}
