@@ -5,18 +5,31 @@ w module (np. bot Telegram). Lista jest zapisana w pluginie i przetrwa restart v
 Plugin nie potrzebuje żadnych uprawnień: nie łączy się z siecią ani z urządzeniami.
 Wymaga vclu 1.13.
 
-## Kreator
+## Kto otwiera listę
 
-Pluginy → Lista zakupów → Konfiguruj. Ustawienia są opcjonalne, bez kreatora plugin działa
-z domyślnymi:
+Lista jest pod `/d/zakupy_lista`, domyślnie tylko dla zalogowanych do panelu. Kto jeszcze ją
+otwiera, ustawiasz Ty, nie plugin: Pluginy → Lista zakupów → Konfiguruj, krok **Dashboardy**:
 
-- **Pokaż listę na dashboardzie**: włączone; lista jest pod `/d/zakupy_lista`;
 - **Nazwa**: domyślnie „Zakupy”;
-- **Kto może otworzyć listę**: zalogowani do panelu, z kodem PIN albo każdy w sieci domowej;
-- **Lista poza domem, w aplikacji vclu**: dashboard w aplikacji przez chmurę vclu, także w sklepie.
-  Do tego opcjonalnie PIN w aplikacji i **role**: nazwy ról z chmury po przecinku
-  (np. `domownicy, gosia`). Bez ról listę widzą wszyscy domownicy. Rola z innymi znakami niż
-  `a-z`, `0-9`, `-` i `_` jest pomijana z wpisem w logu.
+- **Kto może otworzyć**: zalogowani do panelu, z kodem PIN (4 cyfry), każdy w sieci domowej
+  (wygodne na tablecie w kuchni) albo wyłączony (lista znika z panelu);
+- **W aplikacji vclu (przez chmurę)**: lista w telefonie także w sklepie, opcjonalnie z PIN-em
+  w aplikacji i **rolami** z chmury (np. `domownicy, gosia`; znane role są do kliknięcia).
+  Bez ról listę widzą wszyscy domownicy.
+
+Krok **Kod** pokazuje różnicę i zapisuje to jako kod w `modules/plugins/vclu__zakupy.lua`. To ten
+kod decyduje o dostępie, więc ludzie i agenci mogą go też napisać sami, w dowolnym module:
+
+```lua
+local zakupy = Plugin.getPlugin("@vclu/zakupy")
+if zakupy then
+    zakupy:dashboardAccess("lista", { name = "Zakupy", auth = "public",
+        remote = { pin = false, roles = { "domownicy", "gosia" } } })
+end
+```
+
+`auth` to `"session"`, `"pin"` (wtedy `pin = "1234"`), `"public"` albo `"off"`. Kod z kreatora
+nadpisuje ręczne zmiany w tym pliku dopiero po pokazaniu różnicy.
 
 ## Dashboard
 
@@ -87,5 +100,5 @@ end)
 - Do 200 pozycji, nazwa do 100 znaków.
 - Jedna lista na dom, bez kategorii i sklepów.
 - Odmiana nie jest rozpoznawana: `2 mleka` i `mleko` to dwa różne produkty.
-- Dashboard, pole „Dodaj”, lista i akcje wymagają vclu 1.13 (dashboardy pluginów, widgety
-  `input` i `list`, akcje pluginów).
+- Dashboard, pole „Dodaj”, lista i akcje wymagają vclu 1.13 (dashboardy pluginów i
+  `dashboardAccess`, widgety `input` i `list`, akcje pluginów).

@@ -7,7 +7,8 @@ local here = arg[0]:match("^(.*)[/\\][^/\\]+$") or "."
 local harness = dofile(here .. "/../../test/harness.lua")
 local check = harness.check
 
-local env = harness.install()
+-- as plugin.json declares it
+local env = harness.install({ dashboards = { lista = "Zakupy" } })
 local plugin = dofile(here .. "/init.lua")
 plugin._init({})
 
@@ -177,7 +178,8 @@ check("clear_all asks for confirm in its spec", env.actions.clear_all.spec.param
 --------------------------------------------------------------------------------
 
 local d = env.dashboards.zakupy_lista
-check("dashboard zakupy_lista built with defaults", d and d.built and d.name == "Zakupy" and d.auth == "session")
+check("dashboard zakupy_lista built behind login, the manifest's name", d and d.built and d.name == "Zakupy" and d.auth == "session")
+check("no app nor PIN from the plugin: the user grants them", d.remote == nil and d.pin == nil)
 local list = d.widgets.items
 check("one list, adding is its own field", list and list.type == "list" and d.widgets.add == nil)
 
@@ -206,44 +208,25 @@ check("Wyczyść wszystko is held", clearAll.opts.hold == true)
 clearAll.onTap()
 check("Wyczyść wszystko", #plugin:items() == 0 and clearAll.opts.disabled() == true)
 
+-- the old wizard settings do nothing now: access is the module's dashboardAccess
 env.dashboards = {}
 env.actions = {}
 plugin._cleanup()
 plugin = dofile(here .. "/init.lua")
-plugin._init({ dashboardName = "Lista domowa", dashboardAuth = "pin" })
+plugin._init({ dashboard = false, dashboardName = "Inna", dashboardAuth = "public", remote = true, roles = "gosia" })
 d = env.dashboards.zakupy_lista
-check("wizard settings", d.name == "Lista domowa" and d.auth == "pin")
+check("old settings are ignored", d and d.name == "Zakupy" and d.auth == "session" and d.remote == nil)
 
-env.dashboards = {}
-env.actions = {}
-plugin = dofile(here .. "/init.lua")
-plugin._init({ dashboardAuth = "everyone" })
-check("an unknown access is session", env.dashboards.zakupy_lista.auth == "session")
-
-check("no cloud unless asked", d.remote == nil)
-
-env.dashboards = {}
-env.actions = {}
-plugin = dofile(here .. "/init.lua")
-plugin._init({ remote = true, remotePin = true, roles = "Domownicy, gosia;zła rola ,kasia" })
-d = env.dashboards.zakupy_lista
-check("in the app with the PIN", d.remote and d.remote.pin == true)
-check("roles from the wizard, a bad one left out and logged",
-    table.concat(d.remote.roles, ",") == "domownicy,gosia,kasia" and env.log[#env.log - 1]:find("role skipped"))
-
-env.dashboards = {}
-env.actions = {}
-plugin = dofile(here .. "/init.lua")
-plugin._init({ remote = true, roles = "" })
-d = env.dashboards.zakupy_lista
-check("no roles: every member of the home", d.remote and #d.remote.roles == 0 and d.remote.pin == false)
-
-env.dashboards = {}
-env.actions = {}
-plugin = dofile(here .. "/init.lua")
-plugin._init({ dashboard = false })
-check("no dashboard when turned off", env.dashboards.zakupy_lista == nil)
-
+-- the builder refuses what is the user's, as vclu does
+for what, f in pairs({
+    public = function() plugin:dashboard("lista"):auth("public") end,
+    remote = function() plugin:dashboard("lista"):remote() end,
+    roles = function() plugin:dashboard("lista"):roles("gosia") end,
+    pin = function() plugin:dashboard("lista"):pin("1234") end,
+    undeclared = function() plugin:dashboard("inna") end,
+}) do
+    check("a plugin cannot set " .. what, not pcall(f))
+end
 -- last: after a caught error gopher-lua can lose this file's reassigned locals
 plugin:onChange(function() error("boom") end)
 plugin:add("herbata")

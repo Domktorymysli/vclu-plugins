@@ -1056,6 +1056,27 @@ That object follows the expose contract:
 - One object is one type. A receiver with power and volume is two objects
   (`switch` and `number`); HA has no MQTT media player.
 
+### Dashboards: the plugin builds, the user grants access
+
+Declare each dashboard in `plugin.json` (up to 8; id `[a-z0-9_]`, up to 64):
+
+```json
+"dashboards": [{ "id": "lista", "name": { "pl": "Zakupy", "en": "Shopping" }, "description": "..." }]
+```
+
+On API 2 `plugin:dashboard(id)` builds only a declared id, at `/d/<shortId>_<id>`, named as
+declared. The plugin may keep it behind login (`:auth("session")`, the default) or a PIN
+(`:auth("pin")`); `:auth("public")`, `:pin()`, `:remote()` and `:roles()` are refused: who else
+opens it is the user's. The plugin wizard shows a Dashboards step for it and writes the user's
+choice as code, which people and agents can also write by hand in a module:
+
+```lua
+Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", { auth = "public", remote = { roles = { "domownicy" } } })
+```
+
+`test/harness.lua` checks the same: `harness.install({ dashboards = { lista = "Zakupy" } })`
+refuses an undeclared id, and the builder refuses public, a PIN code, remote and roles.
+
 ## Testing
 
 `test/harness.lua` stands in for the runtime, so a plugin runs under a bare

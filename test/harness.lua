@@ -41,7 +41,8 @@ end
 
 --- Install the fake runtime globals.
 -- @param opts table optional { registers = function(reqOpts) -> table,
---                                http = function(reqOpts) -> response }
+--                                http = function(reqOpts) -> response,
+--                                dashboards = { id = name } as plugin.json "dashboards" declares }
 -- @return table recorder with sensors, pollers, objects, emits, log, clobbered,
 --         kv, dashboards, actions
 function M.install(opts)
@@ -221,10 +222,16 @@ function M.install(opts)
     -- Plugin dashboards: plugin:dashboard(id) is a builder like Dashboard.new, its real id
     -- "<shortId>_<id>". The stub keeps each widget with its callbacks for the test to call.
     -- env.dashboards[realId] = { id, name, icon, auth, poll, built, sections, widgets = { id -> w } }
+    -- As in vclu, a plugin keeps a dashboard behind login or a PIN; public, a PIN code, the app
+    -- and roles are the user's (dashboardAccess in a module), so the builder refuses them.
     env.dashboards = {}
-    local AUTHS = { session = true, pin = true, public = true }
-    local function newBuilder(realId)
-        local d = { id = realId, sections = {}, widgets = {}, order = {}, built = false }
+    local AUTHS = { session = true, pin = true }
+    local declared = opts.dashboards
+    local function userOnly(what)
+        error(":" .. what .. "() is the user's to grant (dashboardAccess in a module), not the plugin's", 3)
+    end
+    local function newBuilder(realId, name)
+        local d = { id = realId, name = name, auth = "session", sections = {}, widgets = {}, order = {}, built = false }
         env.dashboards[realId] = d
         local b = {}
         local function widget(kind, id, fields)
@@ -248,36 +255,14 @@ function M.install(opts)
         function b:name(s) d.name = s return b end
         function b:icon(s) d.icon = s return b end
         function b:auth(s)
-            if not AUTHS[s] then error(":auth(): session, pin or public, got " .. tostring(s), 2) end
+            if not AUTHS[s] then error(':auth(): a plugin sets "session" or "pin", got ' .. tostring(s), 2) end
             d.auth = s
             return b
         end
         function b:poll(n) d.poll = n return b end
-        -- vclu cloud: remote({pin, poll}) then roles(...) as in core; roles need remote first
-        function b:remote(spec)
-            if spec ~= nil and spec ~= true and spec ~= false and type(spec) ~= "table" then
-                error(":remote(): nothing, true, false or a table", 2)
-            end
-            if spec == false then d.remote = nil return b end
-            spec = type(spec) == "table" and spec or {}
-            for k in pairs(spec) do
-                if k ~= "pin" and k ~= "poll" then error(':remote(): unknown option "' .. tostring(k) .. '"', 2) end
-            end
-            d.remote = { pin = spec.pin == true, poll = spec.poll, roles = {} }
-            return b
-        end
-        function b:roles(...)
-            if not d.remote then error(":roles(): call :remote() first", 2) end
-            local list = { ... }
-            if #list == 0 then error(":roles(): at least one role", 2) end
-            for _, r in ipairs(list) do
-                if type(r) ~= "string" or #r > 32 or not r:match("^[a-z0-9][a-z0-9_%-]*$") then
-                    error(':roles(): invalid role "' .. tostring(r) .. '"', 2)
-                end
-            end
-            d.remote.roles = list
-            return b
-        end
+        function b:pin() userOnly("pin") end
+        function b:remote() userOnly("remote") end
+        function b:roles() userOnly("roles") end
         function b:columns(n) d.columns = n return b end
         function b:section(name, icon)
             d.sections[#d.sections + 1] = { name = name, icon = icon }
@@ -315,8 +300,12 @@ function M.install(opts)
         return b
     end
     function Plugin:dashboard(id)
-        if type(id) ~= "string" or not id:match("^[%w_%-]+$") then error("dashboard(id): id is [a-z0-9_-]", 2) end
-        return newBuilder(self.shortId .. "_" .. id)
+        if type(id) ~= "string" or not id:match("^[a-z0-9_]+$") then error("dashboard(id): id is [a-z0-9_]", 2) end
+        if declared and not declared[id] then
+            error("dashboard(" .. id .. ') is not declared: declare it in plugin.json "dashboards"', 2)
+        end
+        local realId = self.shortId:gsub("-", "_") .. "_" .. id
+        return newBuilder(realId, declared and declared[id] or realId)
     end
 
     --- What an input widget does with typed text: trimmed, empty is not sent.

@@ -73,6 +73,11 @@ jobs:
               echo "ERROR: $dir/plugin.json: the form file is not in files"
               exit 1
             fi
+            # dashboards as vclu reads them, or it refuses the manifest: up to 8, ids [a-z0-9_] unique,
+            # a name as text or {pl, en} up to 60 characters, a description up to 300
+            if ! python3 .github/scripts/check-dashboards.py "$dir/plugin.json"; then
+              exit 1
+            fi
             # Check init.lua exists
             if [ ! -f "$dir/init.lua" ]; then
               echo "ERROR: Missing init.lua in $dir"

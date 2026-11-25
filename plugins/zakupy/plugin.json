@@ -6,8 +6,14 @@
   "api": 2,
   "permissions": {},
   "author": "vCLU",
-  "form": "form.json",
-  "files": ["init.lua", "form.json", "README.md"],
+  "files": ["init.lua", "README.md"],
+  "dashboards": [
+    {
+      "id": "lista",
+      "name": { "pl": "Zakupy", "en": "Shopping" },
+      "description": { "pl": "Lista do odhaczania i dopisywania z telefonu", "en": "The list to tick off and add to from a phone" }
+    }
+  ],
   "docs": [{ "title": "README", "file": "README.md" }],
   "tags": ["shopping", "list", "dashboard", "voice"]
 }

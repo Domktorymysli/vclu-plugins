@@ -2,7 +2,9 @@
     Lista zakupów for vclu: a shopping list on a dashboard, for voice and agents, kept in the
     plugin's KV store. Needs no permissions.
 
-    Dashboard /d/zakupy_lista (on by default, the wizard names it and sets its access).
+    Dashboard /d/zakupy_lista, declared in plugin.json, behind login. Who else opens it (no login,
+    a PIN, the vclu app, roles) and its name are the user's: the wizard's Dashboards step writes
+    Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", {...}) to modules/plugins/vclu__zakupy.lua.
     Actions for agents and voice: add, remove, done, list, clear_done, clear_all.
     From a module:
 
@@ -460,8 +462,6 @@ end)
 -- Dashboard
 --------------------------------------------------------------------------------
 
-local AUTH = { session = true, pin = true, public = true }
-
 local function addFromDashboard(text)
     local r, err = plugin:add(text)
     if not r then return false, err end
@@ -471,37 +471,13 @@ local function addFromDashboard(text)
     return true
 end
 
--- Roles from the wizard ("domownicy, gosia"): the names the cloud takes; others are logged and left out
-local function parseRoles(text)
-    local out = {}
-    for word in tostring(text or ""):gmatch("[^,;]+") do
-        local r = word:lower():match("^%s*(.-)%s*$")
-        if #r <= 32 and r:match("^[a-z0-9][a-z0-9_%-]*$") then
-            out[#out + 1] = r
-        elseif r ~= "" then
-            plugin:log("warn", "role skipped (a-z, 0-9, - and _): " .. r)
-        end
-    end
-    return out
-end
-
-local function buildDashboard(cfg)
+-- The name comes from plugin.json; access beyond login is the user's (dashboardAccess)
+local function buildDashboard()
     if type(plugin.dashboard) ~= "function" then
         plugin:log("warn", "this vclu has no plugin dashboards (1.13 needed)")
         return
     end
-    local name = normalize(cfg.dashboardName)
-    if name == "" then name = "Zakupy" end
-    local auth = AUTH[cfg.dashboardAuth] and cfg.dashboardAuth or "session"
-
-    local dash = plugin:dashboard("lista"):name(name):icon("cart"):auth(auth):poll(5)
-    -- the list in the vclu app away from home; without roles every member of the home sees it
-    if cfg.remote == true then
-        dash = dash:remote({ pin = cfg.remotePin == true })
-        local roles = parseRoles(cfg.roles)
-        if #roles > 0 then dash = dash:roles((unpack or table.unpack)(roles)) end
-    end
-    dash
+    plugin:dashboard("lista"):icon("cart"):auth("session"):poll(5)
         :section("Lista", "cart")
         :list("items", "Do kupienia", function()
             local out = {}
@@ -532,10 +508,9 @@ local function buildDashboard(cfg)
         :build()
 end
 
-plugin:onInit(function(cfg)
-    cfg = type(cfg) == "table" and cfg or {}
+plugin:onInit(function()
     restore()
-    if cfg.dashboard ~= false then buildDashboard(cfg) end
+    buildDashboard()
     plugin:log("info", "list: " .. #pendingItems() .. " to buy, " .. #items .. " in all")
 end)
 
