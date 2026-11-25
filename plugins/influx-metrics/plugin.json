@@ -4,7 +4,8 @@
   "version": "1.1.2",
   "description": "Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics (line protocol)",
   "api": 2,
-  "permissions": {"lan": true},
+  "permissions": {"internet": "*", "lan": true},
+  "internetWhy": "InfluxDB at the address the user gives (InfluxDB Cloud or a server outside the house)",
   "author": "vCLU Team",
   "license": "MIT",
 

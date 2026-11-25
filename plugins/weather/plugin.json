@@ -6,7 +6,7 @@
   "license": "MIT",
   "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
   "api": 2,
-  "permissions": {},
+  "permissions": {"internet": ["api.openweathermap.org"]},
   "docs": [
     {
       "title": "Getting Started",

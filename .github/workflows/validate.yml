@@ -54,8 +54,12 @@ jobs:
               echo "ERROR: $dir/plugin.json needs \"api\": 2"
               exit 1
             fi
-            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0 and all(.permissions[]; type == "boolean")' "$dir/plugin.json" > /dev/null; then
-              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only lan, mqtt, modbus, grenton_raw, tftp, serial set to true or false"
+            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["internet","lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0 and all(.permissions | to_entries[]; .key == "internet" or (.value | type) == "boolean")' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only internet (a list of hosts) and lan, mqtt, modbus, grenton_raw, tftp, serial set to true or false"
+              exit 1
+            fi
+            # internet: hosts as vclu reads them, "*" only with "internetWhy", every host the Lua calls listed
+            if ! python3 .github/scripts/check-internet.py "$dir"; then
               exit 1
             fi
 

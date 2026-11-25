@@ -4,7 +4,7 @@
   "version": "1.0.1",
   "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
   "api": 2,
-  "permissions": {},
+  "permissions": {"internet": ["worldtimeapi.org"]},
   "author": "vCLU",
   "license": "MIT",
 

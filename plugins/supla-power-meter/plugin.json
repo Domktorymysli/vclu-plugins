@@ -4,7 +4,7 @@
   "version": "2.1.2",
   "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API z expose API",
   "api": 2,
-  "permissions": {},
+  "permissions": {"internet": ["*.supla.org"]},
   "author": "vCLU Team",
   "license": "MIT",
 

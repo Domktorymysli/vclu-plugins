@@ -85,7 +85,7 @@ plugins/my-plugin/
   "license": "MIT",
 
   "api": 2,
-  "permissions": { "lan": true },
+  "permissions": { "internet": ["api.example.com"], "lan": true },
 
   "requires": {
     "vclu": ">=1.0.0"
@@ -939,10 +939,11 @@ and runs every plugin on the old contract.
 
 ### Permissions
 
-On plugin API 2, HTTP to the internet needs nothing. Anything else is declared in `plugin.json`:
+On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet included:
 
 | Permission | Gives |
 |------------|-------|
+| `"internet": ["api.example.com"]` | HTTP to the internet hosts on the list (below) |
 | `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
@@ -953,6 +954,42 @@ On plugin API 2, HTTP to the internet needs nothing. Anything else is declared i
 Without the field an API 2 plugin gets none of them; declare `"permissions": {}` when it needs
 none. A plugin that talks to a device whose address the user gives in `create(opts)`
 needs `lan`.
+
+#### Internet hosts
+
+`internet` (vclu 1.13+, plugin API 2) names the servers the plugin connects to:
+
+| In `permissions` | Means | The plugins page |
+|---|---|---|
+| `"internet": ["openapi.tuyaeu.com", "*.tuyaeu.com"]` | only these hosts | "Internet: connects to: …" |
+| `"internet": "*"` (or `["*"]`) | any host on the internet | a warning: it can connect to any server |
+| no `internet` | no internet | "Internet" in grey |
+
+- An entry is a host name, `*.domain` for the domain's subdomains (`*.tuyaeu.com` matches
+  `openapi.tuyaeu.com`, not `tuyaeu.com`; add both when the plugin calls both), or an exact IP
+  address. No scheme, path, port or user: `"https://api.example.com/v1"` refuses the whole
+  manifest, at download and at load. A non-ASCII name goes in its `xn--` form.
+- vclu checks the host name in the URL, before the request and after every redirect, not the
+  address it resolves to (cloud addresses change). An IP address in the URL matches only the same
+  address on the list.
+- The LAN is separate: a device in the house needs `lan`, also when its name is on the list, and
+  a plugin with `lan` reaches local addresses without listing them.
+- A request to a host that is not on the list fails with
+  `api.example.com is not on the host list of @vclu/foo (permissions.internet)`.
+- The user allows the hosts when installing. An update that adds a host or switches to `"*"`
+  runs with the hosts allowed before until the user allows the new ones in the panel; keep the
+  list exact so the user is not asked again without need.
+- Plugin API 1 (no `"api"`) reaches any host, as before.
+
+In this repository (`validate.yml`, `.github/scripts/check-internet.py`): every `http(s)://`
+host written in the plugin's Lua must be on the list, and `"*"` needs `"internetWhy"` next to
+`permissions` saying which servers and why the user gives them, e.g. a proxy or an InfluxDB
+address from the configuration:
+
+```json
+"permissions": {"internet": "*", "lan": true},
+"internetWhy": "InfluxDB at the address the user gives (InfluxDB Cloud or a server outside the house)",
+```
 
 `Crypto` (hashes, HMAC, AES, random bytes, hex and base64) and `bit` (LuaJIT BitOp) need no
 permission on either API; the plugin gets its own copies. See the Lua reference on docs.vclu.pl.
