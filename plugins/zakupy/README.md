@@ -17,9 +17,8 @@ z domyślnymi:
 
 ## Dashboard
 
-- pole „Dodaj”: jeden produkt albo kilka naraz, np. `mleko, 2 chleby i masło`;
-- lista: dotknięcie odhacza produkt jako kupiony, kosz go usuwa, na dole można dopisać nowy;
-- „Do kupienia”: ile produktów zostało;
+- lista: dotknięcie odhacza produkt jako kupiony, krzyżyk go usuwa, a pole na dole dopisuje
+  jeden produkt albo kilka naraz, np. `mleko, 2 chleby i masło`;
 - „Usuń kupione”: zdejmuje z listy odhaczone;
 - „Wyczyść wszystko”: trzeba przytrzymać, usuwa całą listę.
 
