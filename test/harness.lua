@@ -42,7 +42,8 @@ end
 --- Install the fake runtime globals.
 -- @param opts table optional { registers = function(reqOpts) -> table,
 --                                http = function(reqOpts) -> response }
--- @return table recorder with sensors, pollers, objects, emits, log, clobbered
+-- @return table recorder with sensors, pollers, objects, emits, log, clobbered,
+--         kv, dashboards, actions
 function M.install(opts)
     opts = opts or {}
 
@@ -139,13 +140,20 @@ function M.install(opts)
         return c
     end
 
-    -- Plugin key-value store, kept per test run.
+    -- Plugin key-value store, kept per test run. Values are copied in and out, as the
+    -- runtime stores them outside Lua: a table changed after kvSet is not changed in the store.
     env.kv = {}
+    local function deepCopy(v)
+        if type(v) ~= "table" then return v end
+        local t = {}
+        for k, x in pairs(v) do t[k] = deepCopy(x) end
+        return t
+    end
     function Plugin:kvGet(key, default)
         if env.kv[key] == nil then return default end
-        return env.kv[key]
+        return deepCopy(env.kv[key])
     end
-    function Plugin:kvSet(key, value) env.kv[key] = value; return true end
+    function Plugin:kvSet(key, value) env.kv[key] = deepCopy(value); return true end
     function Plugin:kvDelete(key) env.kv[key] = nil; return true end
 
     function Plugin:url(base, params)
@@ -209,6 +217,126 @@ function M.install(opts)
         return nextTimer
     end
     function Plugin:clearTimer(id) env.timers[id] = nil end
+
+    -- Plugin dashboards: plugin:dashboard(id) is a builder like Dashboard.new, its real id
+    -- "<shortId>_<id>". The stub keeps each widget with its callbacks for the test to call.
+    -- env.dashboards[realId] = { id, name, icon, auth, poll, built, sections, widgets = { id -> w } }
+    env.dashboards = {}
+    local AUTHS = { session = true, pin = true, public = true }
+    local function newBuilder(realId)
+        local d = { id = realId, sections = {}, widgets = {}, order = {}, built = false }
+        env.dashboards[realId] = d
+        local b = {}
+        local function widget(kind, id, fields)
+            if not d.section then error(kind .. '("' .. tostring(id) .. '"): call :section() first', 3) end
+            if type(id) ~= "string" or id == "" then error(kind .. ": id is a string", 3) end
+            if d.widgets[id] then error(kind .. '("' .. id .. '"): duplicate widget id', 3) end
+            fields.type, fields.id, fields.section = kind, id, d.section
+            fields.opts = fields.opts or {}
+            if type(fields.opts) ~= "table" then error(kind .. '("' .. id .. '"): opts must be a table', 3) end
+            local h = fields.opts.hold
+            if h ~= nil and h ~= false and h ~= true and (type(h) ~= "number" or h < 300 or h > 5000) then
+                error(kind .. '("' .. id .. '"): opts.hold must be true, false or 300-5000 ms', 3)
+            end
+            d.widgets[id] = fields
+            d.order[#d.order + 1] = id
+            return b
+        end
+        local function fn(kind, what, f)
+            if type(f) ~= "function" then error(kind .. ": " .. what .. " must be a function", 3) end
+        end
+        function b:name(s) d.name = s return b end
+        function b:icon(s) d.icon = s return b end
+        function b:auth(s)
+            if not AUTHS[s] then error(":auth(): session, pin or public, got " .. tostring(s), 2) end
+            d.auth = s
+            return b
+        end
+        function b:poll(n) d.poll = n return b end
+        function b:columns(n) d.columns = n return b end
+        function b:section(name, icon)
+            d.sections[#d.sections + 1] = { name = name, icon = icon }
+            d.section = name
+            return b
+        end
+        function b:button(id, label, icon, onTap, o)
+            fn("button", "onTap", onTap)
+            return widget("button", id, { label = label, icon = icon, onTap = onTap, opts = o })
+        end
+        function b:toggle(id, label, icon, get, onToggle, o)
+            return widget("toggle", id, { label = label, icon = icon, getValue = get, onToggle = onToggle, opts = o })
+        end
+        function b:status(id, label, icon, get, unit, o)
+            fn("status", "getValue", get)
+            return widget("status", id, { label = label, icon = icon, getValue = get, unit = unit or "", opts = o })
+        end
+        function b:select(id, label, icon, options, get, onSelect, o)
+            return widget("select", id, { label = label, icon = icon, options = options, getValue = get, onSelect = onSelect, opts = o })
+        end
+        -- onSubmit(text) gets trimmed non-empty text; false/nil, "msg" shows an error
+        function b:input(id, label, icon, onSubmit, o)
+            fn("input", "onSubmit", onSubmit)
+            return widget("input", id, { label = label, icon = icon, onSubmit = onSubmit, opts = o })
+        end
+        -- getItems() -> { { id, label, done, note? } }; opts onToggle(id, done), onDelete(id), onAdd(text)
+        function b:list(id, label, getItems, o)
+            fn("list", "getItems", getItems)
+            for _, k in ipairs({ "onToggle", "onDelete", "onAdd" }) do
+                if o and o[k] ~= nil then fn("list", "opts." .. k, o[k]) end
+            end
+            return widget("list", id, { label = label, getItems = getItems, opts = o })
+        end
+        function b:build() d.built = true return d end
+        return b
+    end
+    function Plugin:dashboard(id)
+        if type(id) ~= "string" or not id:match("^[%w_%-]+$") then error("dashboard(id): id is [a-z0-9_-]", 2) end
+        return newBuilder(self.shortId .. "_" .. id)
+    end
+
+    --- What an input widget does with typed text: trimmed, empty is not sent.
+    function env.submit(dashId, widgetId, text)
+        local w = env.dashboards[dashId].widgets[widgetId]
+        text = tostring(text):gsub("^%s+", ""):gsub("%s+$", "")
+        if text == "" then return nil end
+        return w.onSubmit(text)
+    end
+
+    -- Actions for agents and voice: plugin:action(name, spec, fn). The stub checks the spec
+    -- and env.callAction checks params against it before calling fn, as the runtime does.
+    env.actions = {}
+    local PARAM_TYPES = { string = "string", number = "number", integer = "number", boolean = "boolean" }
+    function Plugin:action(name, spec, f)
+        if type(name) ~= "string" or not name:match("^[%a][%w_]*$") then error("action(name): name is [a-z_]", 2) end
+        if env.actions[name] then error('action("' .. name .. '"): defined twice', 2) end
+        if type(spec) ~= "table" or type(spec.description) ~= "table"
+            or type(spec.description.pl) ~= "string" or type(spec.description.en) ~= "string" then
+            error('action("' .. name .. '"): spec.description = { pl, en }', 2)
+        end
+        for pname, p in pairs(spec.params or {}) do
+            if type(p) ~= "table" or not PARAM_TYPES[p.type] or type(p.description) ~= "table" then
+                error('action("' .. name .. '"): param ' .. tostring(pname) .. " = { type, description = { pl, en } }", 2)
+            end
+        end
+        if type(f) ~= "function" then error('action("' .. name .. '"): fn is a function', 2) end
+        env.actions[name] = { spec = spec, fn = f }
+    end
+
+    --- Call an action as an agent would: nil, error for a missing or mistyped param.
+    function env.callAction(name, params)
+        local a = env.actions[name]
+        if not a then return nil, "no action " .. tostring(name) end
+        params = params or {}
+        for pname, p in pairs(a.spec.params or {}) do
+            local v = params[pname]
+            if v == nil then
+                if p.required then return nil, "missing " .. pname end
+            elseif type(v) ~= PARAM_TYPES[p.type] then
+                return nil, pname .. " is a " .. p.type
+            end
+        end
+        return a.fn(params)
+    end
 
     function Plugin:onInit(cb) self._init = cb end
     function Plugin:onCleanup(cb) self._cleanup = cb end

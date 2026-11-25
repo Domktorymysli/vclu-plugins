@@ -1,0 +1,13 @@
+{
+  "id": "zakupy",
+  "name": "Lista zakupów",
+  "version": "1.0.0",
+  "description": "A shopping list: a dashboard, actions for voice assistants and agents, an API for modules",
+  "api": 2,
+  "permissions": {},
+  "author": "vCLU",
+  "form": "form.json",
+  "files": ["init.lua", "form.json", "README.md"],
+  "docs": [{ "title": "README", "file": "README.md" }],
+  "tags": ["shopping", "list", "dashboard", "voice"]
+}

@@ -270,6 +270,24 @@
         "vclu": ">=1.13.0"
       },
       "tag": "tasmota-v1.0.0"
+    },
+    {
+      "id": "zakupy",
+      "name": "Lista zakupów",
+      "version": "1.0.0",
+      "description": "Lista zakupów na dashboardzie, dla asystentów głosowych i agentów (akcje) oraz modułów (API Lua); bez uprawnień",
+      "author": "vCLU",
+      "path": "plugins/zakupy",
+      "tags": [
+        "shopping",
+        "list",
+        "dashboard",
+        "voice"
+      ],
+      "requires": {
+        "vclu": ">=1.13.0"
+      },
+      "tag": "zakupy-v1.0.0"
     }
   ]
 }

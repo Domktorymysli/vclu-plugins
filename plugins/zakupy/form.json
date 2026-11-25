@@ -1,0 +1,18 @@
+{
+  "settings": {
+    "dashboard": {
+      "type": "boolean", "default": true,
+      "label": { "pl": "Dashboard listy", "en": "List dashboard" },
+      "description": { "pl": "Lista pod /d/zakupy_lista", "en": "The list at /d/zakupy_lista" }
+    },
+    "dashboardName": {
+      "type": "string", "default": "Zakupy", "showIf": { "dashboard": true },
+      "label": { "pl": "Nazwa dashboardu", "en": "Dashboard name" }
+    },
+    "dashboardAuth": {
+      "type": "enum", "options": ["session", "pin", "public"], "default": "session", "showIf": { "dashboard": true },
+      "label": { "pl": "Dostęp do dashboardu", "en": "Dashboard access" },
+      "description": { "pl": "session: zalogowani do panelu; pin: PIN dashboardu; public: każdy w sieci", "en": "session: signed in to the panel; pin: the dashboard PIN; public: anyone on the network" }
+    }
+  }
+}
