@@ -1,7 +1,7 @@
 {
   "id": "supla-power-meter",
   "name": "Supla Power Meter",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API z expose API",
   "api": 2,
   "permissions": {

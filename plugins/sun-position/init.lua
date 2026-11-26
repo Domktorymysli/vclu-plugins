@@ -8,7 +8,7 @@
 
 local sun = Plugin:new("sun-position", {
     name = "Sun Position & Astronomy",
-    version = "2.0.0",
+    version = "1.1.0",
     description = "Sun position, sunrise/sunset, moon phases"
 })
 

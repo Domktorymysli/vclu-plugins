@@ -54,7 +54,7 @@
 
 local salda = Plugin:new("salda-recuperator", {
     name = "Salda Recuperator",
-    version = "2.1.0",
+    version = "2.2.0",
     description = "Salda recuperator integration with expose API support"
 })
 

@@ -19,6 +19,10 @@ local plugin = Plugin:new("zakupy", {
     version = "1.0.0",
     description = "A shopping list: dashboard, voice and agent actions"
 })
+-- vclu 1.12 does not read "requires" in plugin.json: say what is missing instead of failing later
+if type(plugin.has) ~= "function" then
+    error("@vclu/zakupy needs vclu 1.13 or newer", 0)
+end
 
 local MAX_LABEL = 100   -- characters
 local MAX_ITEMS = 200

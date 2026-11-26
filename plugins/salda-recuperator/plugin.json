@@ -1,7 +1,7 @@
 {
   "id": "salda-recuperator",
   "name": "Salda Recuperator",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie z expose API",
   "api": 2,
   "permissions": {

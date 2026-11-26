@@ -17,6 +17,10 @@ local plugin = Plugin:new("tasmota", {
     version = "1.0.0",
     description = "Tasmota relays and power meters over HTTP"
 })
+-- vclu 1.12 does not read "requires" in plugin.json: say what is missing instead of failing later
+if type(plugin.has) ~= "function" then
+    error("@vclu/tasmota needs vclu 1.13 or newer", 0)
+end
 
 local MAX_RELAYS = 8
 local SCAN_PARALLEL = 32

@@ -8,7 +8,7 @@
 
 local weather = Plugin:new("weather", {
     name = "Weather Plugin",
-    version = "2.0.0",
+    version = "1.2.0",
     description = "Weather data from OpenWeatherMap"
 })
 

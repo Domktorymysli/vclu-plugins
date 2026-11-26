@@ -1,7 +1,7 @@
 {
   "id": "time-sync",
   "name": "Time Sync",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
   "api": 2,
   "permissions": {

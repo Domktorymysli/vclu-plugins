@@ -165,6 +165,8 @@ function M.install(opts)
         return tostring(base) .. (#q > 0 and ("?" .. table.concat(q, "&")) or "")
     end
 
+    -- vclu 1.13 and newer: every feature these tests use
+    function Plugin:has(name) return type(name) == "string" end
     function Plugin:basicAuth(user, pass) return "Basic " .. tostring(user) .. ":" .. tostring(pass) end
     function Plugin:bearerAuth(token) return "Bearer " .. tostring(token) end
 

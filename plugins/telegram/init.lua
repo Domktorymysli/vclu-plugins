@@ -8,7 +8,7 @@
 
 local telegram = Plugin:new("telegram", {
     name = "Telegram Notifications",
-    version = "2.1.0",
+    version = "1.4.0",
     description = "Telegram Bot - send and receive messages"
 })
 

@@ -23,7 +23,7 @@
 
 local plugin = Plugin:new("pse-rce", {
     name = "Ceny energii RCE (PSE)",
-    version = "0.1.0",
+    version = "0.2.0",
     description = "Factory for PSE market energy prices (RCE)"
 })
 
