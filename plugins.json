@@ -5,12 +5,12 @@
   "description": "Oficjalne pluginy dla Virtual CLU",
   "author": "Domktorymysli",
   "url": "https://github.com/Domktorymysli/vclu-plugins",
-  "updated": "2026-11-04T19:35:05Z",
+  "updated": "2026-11-26T22:54:00Z",
   "plugins": [
     {
       "id": "weather",
       "name": "Weather Plugin",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Dane pogodowe z OpenWeatherMap",
       "author": "tytus",
       "path": "plugins/weather",
@@ -22,12 +22,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "weather-v1.1.0"
+      "tag": "weather-v1.2.0",
+      "sha256": {
+        "plugin.json": "aa5eae459158aa8531a786cfd687469936b1c2095691e4efc9e9a8778b71fea4",
+        "init.lua": "515b4864dca5608252babbee7f5da62ab0e7d94ba3a4447a8b9fc636529a9a2c"
+      }
     },
     {
       "id": "example",
       "name": "Example Plugin",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "description": "Przykładowy plugin - szablon do tworzenia własnych pluginów",
       "author": "vCLU Team",
       "path": "plugins/example",
@@ -39,12 +43,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "example-v2.1.1"
+      "tag": "example-v2.2.0",
+      "sha256": {
+        "plugin.json": "810dc2c3a7170750de225e744ffef9f0a4abf08fee07c1784d0118ccfeb2434e",
+        "init.lua": "719b77d023c990d3606eb9b91bcfe6fa6d2f5adea026fe0e89a6b91857f5070b"
+      }
     },
     {
       "id": "time-sync",
       "name": "Time Sync",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
       "author": "vCLU Team",
       "path": "plugins/time-sync",
@@ -58,12 +66,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "time-sync-v1.0.1"
+      "tag": "time-sync-v1.1.0",
+      "sha256": {
+        "plugin.json": "8ad97354821fd722ea6ea94125e1347921e54237b4db4eb17002bcc20bd70f37",
+        "init.lua": "102afd4c7e24b338024026171aa6577e162abefd364cd987143f30be3a298dc4"
+      }
     },
     {
       "id": "salda-recuperator",
       "name": "Salda Recuperator",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie",
       "author": "vCLU Team",
       "path": "plugins/salda-recuperator",
@@ -77,12 +89,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "salda-recuperator-v2.1.1"
+      "tag": "salda-recuperator-v2.2.0",
+      "sha256": {
+        "plugin.json": "f27a5cf948083c2ce453c797c493ea737a1e186b561c14890b41108e668a0413",
+        "init.lua": "72adc25cce275c428ec952b2252d77be4edefde9c4fa6ae327380eab6b6d5c25"
+      }
     },
     {
       "id": "sun-position",
       "name": "Sun Position & Astronomy",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Pozycja słońca, wschody/zachody, fazy księżyca - automatyzacja rolet",
       "author": "vCLU Team",
       "path": "plugins/sun-position",
@@ -98,12 +114,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "sun-position-v1.0.0"
+      "tag": "sun-position-v1.1.0",
+      "sha256": {
+        "plugin.json": "a30a455a213de3fea787e7023f869963e2793a6e4f113933a93c9ec252f10998",
+        "init.lua": "dbca773af1766a9f76ff806531ad00c70963f46373d010c372c8c6bc88446f90"
+      }
     },
     {
       "id": "telegram",
       "name": "Telegram Notifications",
-      "version": "1.3.1",
+      "version": "1.4.0",
       "description": "Powiadomienia przez Telegram Bot API",
       "author": "vCLU Team",
       "path": "plugins/telegram",
@@ -116,12 +136,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "telegram-v1.3.1"
+      "tag": "telegram-v1.4.0",
+      "sha256": {
+        "plugin.json": "848de23d721392d1fe718cb95ff8d1bd13bbbc3fd9711359214d9061a38d4d7d",
+        "init.lua": "e1d091f90f78ebf0174514c7c51d830ece85cca8db2b56a3933c418c88dda453"
+      }
     },
     {
       "id": "supla-power-meter",
       "name": "Supla Power Meter",
-      "version": "2.1.2",
+      "version": "2.2.0",
       "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API",
       "author": "vCLU Team",
       "path": "plugins/supla-power-meter",
@@ -136,12 +160,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "supla-power-meter-v2.1.2"
+      "tag": "supla-power-meter-v2.2.0",
+      "sha256": {
+        "plugin.json": "cf5c3bede4bb6f616ba377758ac1d5a0383ebe0ff40f91438044409bf06e4017",
+        "init.lua": "256dc92681ef7348a43bc6caa047fde5c19f9b651fc8cd30080bc60f48cf2547"
+      }
     },
     {
       "id": "solax",
       "name": "SolaX Inverter",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html)",
       "author": "tytus",
       "path": "plugins/solax",
@@ -156,12 +184,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "solax-v1.0.2"
+      "tag": "solax-v1.1.0",
+      "sha256": {
+        "plugin.json": "ca60a5e32d5a494bc25d6286c5d9790e6f5ab50744acf576a7748ed71ee3343c",
+        "init.lua": "d5f84227d381691076735f0a48747795939b4aa09e5794516675296cfe81b48d"
+      }
     },
     {
       "id": "modbus-gateway",
       "name": "Modbus Gateway",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "description": "Fabryka bramek Modbus RTU po RS485-Ethernet (Waveshare, USR, Elfin). Bramki deklarujesz w kodzie przez create(), wiec jedno vCLU obsluguje ich dowolnie wiele.",
       "author": "tytus",
       "path": "plugins/modbus-gateway",
@@ -177,12 +209,16 @@
       "requires": {
         "vclu": ">=1.1.0"
       },
-      "tag": "modbus-gateway-v2.1.0"
+      "tag": "modbus-gateway-v2.2.0",
+      "sha256": {
+        "plugin.json": "da6ff11f0a161fa87fbb115bb04c46337db5a4f43317b1f0fdfed21a1df3e336",
+        "init.lua": "64bf21a084a36a36e4478bd49c23ba7c9daef532905c064db725021196704531"
+      }
     },
     {
       "id": "frigate",
       "name": "Frigate NVR",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "description": "Integracja z Frigate NVR - detekcja obiektow, statusy kamer, eventy",
       "author": "vCLU",
       "path": "plugins/frigate",
@@ -197,12 +233,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "frigate-v2.0.1"
+      "tag": "frigate-v2.1.0",
+      "sha256": {
+        "plugin.json": "d285dba4eae96bf8993ac076ce79c3246c598958dd6d0e19f4008fb6ec974096",
+        "init.lua": "cb9c33263a8a83832d8860ce8462513d8102abfc81fb91cc282bbf3759bea289"
+      }
     },
     {
       "id": "musiccast",
       "name": "Yamaha MusicCast",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Amplitunery i głośniki Yamaha MusicCast przez lokalne API",
       "author": "vCLU",
       "path": "plugins/musiccast",
@@ -214,12 +254,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "musiccast-v0.2.0"
+      "tag": "musiccast-v0.3.0",
+      "sha256": {
+        "plugin.json": "5c19cde68c49fc6086b94bd378b86aff57cb6634754b77f8cb291f8dd2647e1e",
+        "init.lua": "40233b44ad0ea89fd947415a28d0598713510d692abf03d60a4118b18645647c"
+      }
     },
     {
       "id": "pse-rce",
       "name": "Ceny energii RCE (PSE)",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Rynkowa cena energii (RCE) z PSE co 15 minut: dziś i jutro, ile warta jest nadwyżka w net-billingu",
       "author": "vCLU",
       "path": "plugins/pse-rce",
@@ -231,12 +275,16 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "pse-rce-v0.1.0"
+      "tag": "pse-rce-v0.2.0",
+      "sha256": {
+        "plugin.json": "648cf8057e80b4f8f362d8d2fa65d6119000c0d07b1150759f68788f392fc936",
+        "init.lua": "abbd3d73974f72612d40a730b054a9a9c49150fef8abd0d4b8abf9d05479b7f2"
+      }
     },
     {
       "id": "influx-metrics",
       "name": "InfluxDB Metrics",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "description": "Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics (line protocol)",
       "author": "vCLU Team",
       "path": "plugins/influx-metrics",
@@ -250,7 +298,11 @@
       "requires": {
         "vclu": ">=1.0.0"
       },
-      "tag": "influx-metrics-v1.1.2"
+      "tag": "influx-metrics-v1.2.0",
+      "sha256": {
+        "plugin.json": "cc49727be8ddebe960d72e76598dfa7521a83c87a4a0e20cefbbb6d715964700",
+        "init.lua": "4b7477e08c13b5ac707b36d79a395d338b9e7724b221bd0147d84d3909d98e03"
+      }
     },
     {
       "id": "tasmota",
@@ -269,7 +321,13 @@
       "requires": {
         "vclu": ">=1.13.0"
       },
-      "tag": "tasmota-v1.0.0"
+      "tag": "tasmota-v1.0.0",
+      "sha256": {
+        "plugin.json": "83205019f28811916a34fde161cd1ffa1428b1fa929aefc7860c6ce2fab76078",
+        "init.lua": "bd33a9f6ee0523b0070ee215cbf5fc8e0b32d6f30e80e9f1f728002cdb1bfbe4",
+        "form.json": "428b3c2441a1ed30426a7d29294af06dc2127e7b23b2737edd7f2dbf59da0c01",
+        "README.md": "f46ed306316576d4ce49d0bc90db576b1d6affd889e3507b237af02f5a905a99"
+      }
     },
     {
       "id": "zakupy",
@@ -287,7 +345,12 @@
       "requires": {
         "vclu": ">=1.13.0"
       },
-      "tag": "zakupy-v1.0.0"
+      "tag": "zakupy-v1.0.0",
+      "sha256": {
+        "plugin.json": "d74ab807c411a1d0a6c377013fea260e0319ac0ce37324474ff3afc4ed7852c0",
+        "init.lua": "f7288a1f781babc9ab5ef976ff0c522d9b2407637f259ab2abcafd495fc3f87c",
+        "README.md": "503d7ee91558a549d90dee100db27fe44ba1d50e22dd328c5e690d1e2410330d"
+      }
     }
   ]
 }
