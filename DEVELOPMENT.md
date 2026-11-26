@@ -587,6 +587,9 @@ plugin:clearTimer(timerId)
 plugin:clearTimer(intervalId)
 ```
 
+Every call into the plugin's code, a timer's included, has a time limit (vclu 1.13+, see
+"Time limit" below).
+
 ### MQTT
 
 Needs `"mqtt": true` in the permissions of `plugin.json`.
@@ -684,6 +687,13 @@ repeated or of another permission refuses the manifest; `validate.yml` checks it
 Tuya's message service, Shelly Gen2 (`ws://<ip>/rpc`), Home Assistant. It has no permission of
 its own: it reaches what the plugin's HTTP reaches, an internet host on the `internet` list
 (`wss://` or `ws://`) and a local address with `lan` and its hosts, never the vclu it runs in.
+On the local network only to the ports listed in `plugin.json` (at most 8, none of another
+permission, as `tcp.ports`):
+
+```json
+"permissions": { "lan": true },
+"websocket": { "lanPorts": [80, 8123] }
+```
 
 ```lua
 local ws, err = plugin:websocket("wss://mq.example.com/ws", {
@@ -1041,7 +1051,7 @@ On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet 
 | Permission | Gives |
 |------------|-------|
 | `"internet": ["api.example.com"]` | HTTP and WebSocket to the internet hosts on the list (below) |
-| `"lan": true` | HTTP and WebSocket to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
+| `"lan": true` | HTTP and WebSocket to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution); never the ports vclu itself listens on; WebSocket only to the ports in `"websocket"` |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"udp": true` | a UDP socket for devices on the local network, not the CLU (see below) |
 | `"tcp": true` | TCP connections to devices on the local network, to the ports in `"tcp"` (see below) |
@@ -1089,6 +1099,21 @@ address from the configuration:
 "permissions": {"internet": "*", "lan": true},
 "internetWhy": "InfluxDB at the address the user gives (InfluxDB Cloud or a server outside the house)",
 ```
+
+#### Ports
+
+Installing records the ports `plugin.json` lists (`udp.broadcastPorts`, `tcp.ports`,
+`websocket.lanPorts`) with the user's permission. An update that adds a port runs with the ports
+allowed before until the user allows the new one in the panel, as for internet hosts.
+
+#### Time limit
+
+All plugins, modules and dashboards share one Lua loop, so the plugin's code gets at most 2 s of
+one call (10 s for `init.lua` and `init`), wherever it is called from: a timer, a device's answer,
+an action, its dashboard, a method a module calls. Over it the plugin's code stops with
+`callback over 2s` in the log and the rest of vclu goes on; `pcall` does not hold it. A plugin
+over the limit 3 times in 10 minutes is suspended: turned off until the user turns it on on the
+plugins page (or vclu restarts). Split long work into steps in timers or device answers.
 
 `Crypto` (hashes, HMAC, AES, random bytes, hex and base64) and `bit` (LuaJIT BitOp) need no
 permission on either API; the plugin gets its own copies. See the Lua reference on docs.vclu.pl.

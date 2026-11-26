@@ -86,6 +86,10 @@ jobs:
             if ! python3 .github/scripts/check-tcp.py "$dir/plugin.json"; then
               exit 1
             fi
+            # WebSocket ports on the local network as vclu reads them: up to 8, none of another permission, with lan
+            if ! python3 .github/scripts/check-websocket.py "$dir/plugin.json"; then
+              exit 1
+            fi
             # Check init.lua exists
             if [ ! -f "$dir/init.lua" ]; then
               echo "ERROR: Missing init.lua in $dir"
