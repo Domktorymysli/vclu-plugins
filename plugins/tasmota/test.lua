@@ -45,10 +45,18 @@ end
 
 local function decode(s) return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)) end
 
+-- 192.168.1.40 is a Tasmota with a web password, 192.168.1.50 something else on port 80
+local locked = "192.168.1.40"
+state[locked] = { "OFF" }
+
 local env = harness.install({
     http = function(req)
         local ip, cmnd = req.url:match("^http://([%d%.]+)/cm%?cmnd=([^&]*)")
+        if ip == "192.168.1.50" then return { status = 200, json = { hello = "router" } } end
         if not state[ip] then return { err = "timeout" } end
+        if ip == locked and not req.url:find("&password=secret", 1, true) then
+            return { status = 401, json = { WARNING = "Need user=<username>&password=<password>" } }
+        end
         return { status = 200, json = answer(ip, decode(cmnd)) }
     end
 })
@@ -61,9 +69,16 @@ plugin._init({ interval = 10 })
 --------------------------------------------------------------------------------
 
 local found, foundErr
+env.secrets.password = "secret"
 plugin._discover({ subnet = "192.168.1.0/24" }, function(rows, err) found, foundErr = rows, err end)
+env.secrets.password = nil
 check("discover answers", found ~= nil and foundErr == nil)
-check("three relays on two devices", found and #found == 3)
+check("four relays on three devices", found and #found == 4)
+local withPassword = {}
+for _, req in ipairs(env.http) do
+    if req.url:find("password=", 1, true) then withPassword[#withPassword + 1] = req.url:match("^http://([%d%.]+)/") end
+end
+check("the password goes only to the Tasmota that asked for it", #withPassword == 1 and withPassword[1] == locked)
 local byId = {}
 for _, r in ipairs(found or {}) do byId[r.id] = r end
 check("a two-relay device gives a row per relay", byId["tasmota_ab12cd_1234_1"] and byId["tasmota_ab12cd_1234_2"]
@@ -71,7 +86,7 @@ check("a two-relay device gives a row per relay", byId["tasmota_ab12cd_1234_1"] 
 check("names come from FriendlyName", byId["tasmota_ab12cd_1234_2"].name == "Wentylator")
 check("the meter goes with relay 1", byId["tasmota_ab12cd_1234_1"].power == true and byId["tasmota_ab12cd_1234_2"].power == false)
 check("a one-relay plug", byId["nous_a1t"] and byId["nous_a1t"].relay == 1 and byId["nous_a1t"].ip == "192.168.1.30")
-check("the whole /24 was asked", #env.http >= 254)
+check("the whole /24 was asked", #env.http >= 255)
 
 local _, badErr
 plugin._discover({ subnet = "192.168.1.0/16" }, function(rows, err) badErr = err end)

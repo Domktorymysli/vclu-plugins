@@ -11,7 +11,11 @@
     "lan": {
       "ports": [
         80
-      ]
+      ],
+      "why": {
+        "pl": "Sterowanie przekaźnikami i odczyt mocy urządzeń Tasmota przez ich stronę WWW; wyszukiwanie urządzeń w sieci domowej",
+        "en": "Switches relays and reads power from Tasmota devices over their web API; finds the devices on the home network"
+      }
     }
   },
   "author": "vCLU",

@@ -33,20 +33,24 @@ local function encode(s)
     return (tostring(s):gsub("[^%w%-%._~]", function(c) return string.format("%%%02X", c:byte()) end))
 end
 
--- cb(json, err); the password is the plugin's secret and never leaves this function
-local function command(ip, cmnd, cb, timeout)
+-- cb(json, err, needsPassword); the password is the plugin's secret and never leaves this
+-- function. anonymous: without it, for an address not yet known to be a Tasmota.
+local function command(ip, cmnd, cb, timeout, anonymous)
     local url = "http://" .. ip .. "/cm?cmnd=" .. encode(cmnd)
-    local password = plugin:secret("password")
+    local password = not anonymous and plugin:secret("password")
     if password and password ~= "" then
         url = url .. "&user=admin&password=" .. encode(password)
     end
     plugin:httpRequest({ url = url, timeout = timeout or 5000, parseJson = "success" }, function(resp)
-        if resp.err then
+        local warning = type(resp.json) == "table" and resp.json.WARNING
+        if resp.status == 401 or (warning and tostring(warning):find("Need user", 1, true)) then
+            cb(nil, "wrong or missing password", true)
+        elseif resp.err then
             cb(nil, resp.err)
         elseif type(resp.json) ~= "table" then
             cb(nil, "not a Tasmota answer")
-        elseif resp.json.WARNING then
-            cb(nil, tostring(resp.json.WARNING))
+        elseif warning then
+            cb(nil, tostring(warning))
         else
             cb(resp.json)
         end
@@ -276,7 +280,7 @@ plugin:discover(function(cfg, done)
             local ip = prefix .. nextHost
             nextHost = nextHost + 1
             pending = pending + 1
-            command(ip, "Status 0", function(json)
+            local function found(json)
                 pending = pending - 1
                 if json and (json.Status or json.StatusNET) then
                     for _, row in ipairs(rowsOf(ip, json)) do rows[#rows + 1] = row end
@@ -287,7 +291,15 @@ plugin:discover(function(cfg, done)
                 else
                     launch()
                 end
-            end, SCAN_TIMEOUT)
+            end
+            -- the password goes only to an address that answered as a Tasmota asking for it
+            command(ip, "Status 0", function(json, _, needsPassword)
+                if needsPassword then
+                    command(ip, "Status 0", found, SCAN_TIMEOUT)
+                else
+                    found(json)
+                end
+            end, SCAN_TIMEOUT, true)
         end
     end
     launch()

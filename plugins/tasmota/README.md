@@ -10,7 +10,8 @@ Pluginy → Tasmota → Konfiguruj:
 1. **Ustawienia.** Sieć, w której szukać urządzeń (`192.168.1.0/24`), hasło WWW urządzeń, jeśli
    je ustawiłeś (jedno dla wszystkich, użytkownik `admin`), co ile sekund czytać stan i czy
    utworzyć dashboard.
-2. **Urządzenia.** „Wykryj” pyta każdy adres sieci o `Status 0` i pokazuje każdy przekaźnik
+2. **Urządzenia.** „Wykryj” pyta każdy adres sieci o `Status 0`, bez hasła; hasło dostaje tylko
+   urządzenie, które odpowiedziało jak Tasmota i o nie poprosiło. Każdy przekaźnik jest
    w osobnym wierszu. Zaznacz te, które chcesz, i ustaw:
    - **Wystaw jako**: `switch` albo `light` (Home Assistant, Apple Home, dashboardy), `none`: nie wystawiaj;
    - **Powiąż z obiektem**: ścieżka DOUT z Grentona (`CLU221000002.DOU0001`) albo wystawionego
