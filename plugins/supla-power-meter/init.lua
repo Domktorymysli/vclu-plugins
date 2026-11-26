@@ -41,7 +41,7 @@
 
 local supla = Plugin:new("supla-power-meter", {
     name = "Supla Power Meter",
-    version = "2.1.2",
+    version = "2.2.0",
     description = "Supla 3-phase power meter integration with expose API support"
 })
 

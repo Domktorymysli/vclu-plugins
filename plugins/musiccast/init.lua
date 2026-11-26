@@ -24,7 +24,7 @@
 
 local plugin = Plugin:new("musiccast", {
     name = "Yamaha MusicCast",
-    version = "0.1.0",
+    version = "0.3.0",
     description = "Factory for Yamaha MusicCast devices over the local YXC API"
 })
 

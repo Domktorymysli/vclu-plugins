@@ -41,8 +41,11 @@ end
 
 --- Install the fake runtime globals.
 -- @param opts table optional { registers = function(reqOpts) -> table,
---                                http = function(reqOpts) -> response }
--- @return table recorder with sensors, pollers, objects, emits, log, clobbered
+--                                http = function(reqOpts) -> response,
+--                                dashboards = { id = name } as plugin.json "dashboards" declares,
+--                                actions = { name = { params, confirm } } as plugin.json "actions" declares }
+-- @return table recorder with sensors, pollers, objects, emits, log, clobbered,
+--         kv, dashboards, actions
 function M.install(opts)
     opts = opts or {}
 
@@ -139,13 +142,20 @@ function M.install(opts)
         return c
     end
 
-    -- Plugin key-value store, kept per test run.
+    -- Plugin key-value store, kept per test run. Values are copied in and out, as the
+    -- runtime stores them outside Lua: a table changed after kvSet is not changed in the store.
     env.kv = {}
+    local function deepCopy(v)
+        if type(v) ~= "table" then return v end
+        local t = {}
+        for k, x in pairs(v) do t[k] = deepCopy(x) end
+        return t
+    end
     function Plugin:kvGet(key, default)
         if env.kv[key] == nil then return default end
-        return env.kv[key]
+        return deepCopy(env.kv[key])
     end
-    function Plugin:kvSet(key, value) env.kv[key] = value; return true end
+    function Plugin:kvSet(key, value) env.kv[key] = deepCopy(value); return true end
     function Plugin:kvDelete(key) env.kv[key] = nil; return true end
 
     function Plugin:url(base, params)
@@ -155,6 +165,8 @@ function M.install(opts)
         return tostring(base) .. (#q > 0 and ("?" .. table.concat(q, "&")) or "")
     end
 
+    -- vclu 1.13 and newer: every feature these tests use
+    function Plugin:has(name) return type(name) == "string" end
     function Plugin:basicAuth(user, pass) return "Basic " .. tostring(user) .. ":" .. tostring(pass) end
     function Plugin:bearerAuth(token) return "Bearer " .. tostring(token) end
 
@@ -172,6 +184,12 @@ function M.install(opts)
         if cb then cb(resp) end
         return true
     end
+
+    -- Wizard: secrets from the test, discover and moduleCode kept for the test to call
+    env.secrets = {}
+    function Plugin:secret(name) return env.secrets[name] end
+    function Plugin:discover(fn) self._discover = fn end
+    function Plugin:moduleCode(fn) self._moduleCode = fn end
 
     function Plugin:upsertObject(path, data) env.objects[path] = data end
 
@@ -203,6 +221,143 @@ function M.install(opts)
         return nextTimer
     end
     function Plugin:clearTimer(id) env.timers[id] = nil end
+
+    -- Plugin dashboards: plugin:dashboard(id) is a builder like Dashboard.new, its real id
+    -- "<shortId>_<id>". The stub keeps each widget with its callbacks for the test to call.
+    -- env.dashboards[realId] = { id, name, icon, auth, poll, built, sections, widgets = { id -> w } }
+    -- As in vclu, a plugin keeps a dashboard behind login or a PIN; public, a PIN code, the app
+    -- and roles are the user's (dashboardAccess in a module), so the builder refuses them.
+    env.dashboards = {}
+    local AUTHS = { session = true, pin = true }
+    local declared = opts.dashboards
+    local function userOnly(what)
+        error(":" .. what .. "() is the user's to grant (dashboardAccess in a module), not the plugin's", 3)
+    end
+    local function newBuilder(realId, name)
+        local d = { id = realId, name = name, auth = "session", sections = {}, widgets = {}, order = {}, built = false }
+        env.dashboards[realId] = d
+        local b = {}
+        local function widget(kind, id, fields)
+            if not d.section then error(kind .. '("' .. tostring(id) .. '"): call :section() first', 3) end
+            if type(id) ~= "string" or id == "" then error(kind .. ": id is a string", 3) end
+            if d.widgets[id] then error(kind .. '("' .. id .. '"): duplicate widget id', 3) end
+            fields.type, fields.id, fields.section = kind, id, d.section
+            fields.opts = fields.opts or {}
+            if type(fields.opts) ~= "table" then error(kind .. '("' .. id .. '"): opts must be a table', 3) end
+            local h = fields.opts.hold
+            if h ~= nil and h ~= false and h ~= true and (type(h) ~= "number" or h < 300 or h > 5000) then
+                error(kind .. '("' .. id .. '"): opts.hold must be true, false or 300-5000 ms', 3)
+            end
+            d.widgets[id] = fields
+            d.order[#d.order + 1] = id
+            return b
+        end
+        local function fn(kind, what, f)
+            if type(f) ~= "function" then error(kind .. ": " .. what .. " must be a function", 3) end
+        end
+        function b:name(s) d.name = s return b end
+        function b:icon(s) d.icon = s return b end
+        function b:auth(s)
+            if not AUTHS[s] then error(':auth(): a plugin sets "session" or "pin", got ' .. tostring(s), 2) end
+            d.auth = s
+            return b
+        end
+        function b:poll(n) d.poll = n return b end
+        function b:pin() userOnly("pin") end
+        function b:remote() userOnly("remote") end
+        function b:roles() userOnly("roles") end
+        function b:columns(n) d.columns = n return b end
+        function b:section(name, icon)
+            d.sections[#d.sections + 1] = { name = name, icon = icon }
+            d.section = name
+            return b
+        end
+        function b:button(id, label, icon, onTap, o)
+            fn("button", "onTap", onTap)
+            return widget("button", id, { label = label, icon = icon, onTap = onTap, opts = o })
+        end
+        function b:toggle(id, label, icon, get, onToggle, o)
+            return widget("toggle", id, { label = label, icon = icon, getValue = get, onToggle = onToggle, opts = o })
+        end
+        function b:status(id, label, icon, get, unit, o)
+            fn("status", "getValue", get)
+            return widget("status", id, { label = label, icon = icon, getValue = get, unit = unit or "", opts = o })
+        end
+        function b:select(id, label, icon, options, get, onSelect, o)
+            return widget("select", id, { label = label, icon = icon, options = options, getValue = get, onSelect = onSelect, opts = o })
+        end
+        -- onSubmit(text) gets trimmed non-empty text; false/nil, "msg" shows an error
+        function b:input(id, label, icon, onSubmit, o)
+            fn("input", "onSubmit", onSubmit)
+            return widget("input", id, { label = label, icon = icon, onSubmit = onSubmit, opts = o })
+        end
+        -- getItems() -> { { id, label, done, note? } }; opts onToggle(id, done), onDelete(id), onAdd(text)
+        function b:list(id, label, getItems, o)
+            fn("list", "getItems", getItems)
+            for _, k in ipairs({ "onToggle", "onDelete", "onAdd" }) do
+                if o and o[k] ~= nil then fn("list", "opts." .. k, o[k]) end
+            end
+            return widget("list", id, { label = label, getItems = getItems, opts = o })
+        end
+        function b:build() d.built = true return d end
+        return b
+    end
+    function Plugin:dashboard(id)
+        if type(id) ~= "string" or not id:match("^[a-z0-9_]+$") then error("dashboard(id): id is [a-z0-9_]", 2) end
+        if declared and not declared[id] then
+            error("dashboard(" .. id .. ') is not declared: declare it in plugin.json "dashboards"', 2)
+        end
+        local realId = self.shortId:gsub("-", "_") .. "_" .. id
+        return newBuilder(realId, declared and declared[id] or realId)
+    end
+
+    --- What an input widget does with typed text: trimmed, empty is not sent.
+    function env.submit(dashId, widgetId, text)
+        local w = env.dashboards[dashId].widgets[widgetId]
+        text = tostring(text):gsub("^%s+", ""):gsub("%s+$", "")
+        if text == "" then return nil end
+        -- an input's onSubmit, or the add field of a list
+        return (w.onSubmit or w.opts.onAdd)(text)
+    end
+
+    -- Actions for agents and voice. plugin.json declares them (opts.actions = { name =
+    -- { params = {...}, confirm = true } }) and the plugin gives each its function:
+    -- plugin:action(name, fn). env.callAction checks params and confirm as vclu does.
+    env.actions = {}
+    local PARAM_TYPES = { string = "string", number = "number", boolean = "boolean" }
+    function Plugin:action(name, f, extra)
+        if type(name) ~= "string" or not name:match("^[a-z][a-z0-9_]*$") then error("action(name): name is [a-z0-9_]", 2) end
+        if env.actions[name] then error('action("' .. name .. '"): defined twice', 2) end
+        if type(f) ~= "function" or extra ~= nil then
+            error('action("' .. name .. '", fn): the description and params are in plugin.json "actions"', 2)
+        end
+        local spec = (opts.actions or {})[name]
+        if not spec then error('action("' .. name .. '") is not declared: declare it in plugin.json "actions"', 2) end
+        for pname, p in pairs(spec.params or {}) do
+            if type(p) ~= "table" or not PARAM_TYPES[p.type] then
+                error('action("' .. name .. '"): param ' .. tostring(pname) .. " = { type }", 2)
+            end
+        end
+        env.actions[name] = { spec = spec, fn = f }
+    end
+
+    --- Call an action as an agent would: nil, error for a missing or mistyped param, or
+    -- for one plugin.json marks confirm without confirmed.
+    function env.callAction(name, params, confirmed)
+        local a = env.actions[name]
+        if not a then return nil, "no action " .. tostring(name) end
+        if a.spec.confirm and confirmed ~= true then return nil, "asks for confirmation" end
+        params = params or {}
+        for pname, p in pairs(a.spec.params or {}) do
+            local v = params[pname]
+            if v == nil then
+                if p.required then return nil, "missing " .. pname end
+            elseif type(v) ~= PARAM_TYPES[p.type] then
+                return nil, pname .. " is a " .. p.type
+            end
+        end
+        return a.fn(params)
+    end
 
     function Plugin:onInit(cb) self._init = cb end
     function Plugin:onCleanup(cb) self._cleanup = cb end

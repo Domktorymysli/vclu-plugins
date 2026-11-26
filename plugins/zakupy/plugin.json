@@ -1,0 +1,116 @@
+{
+  "id": "zakupy",
+  "name": "Lista zakupów",
+  "version": "1.0.0",
+  "description": "A shopping list: a dashboard, actions for voice assistants and agents, an API for modules",
+  "api": 2,
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {},
+  "author": "vCLU",
+  "files": [
+    "init.lua",
+    "README.md"
+  ],
+  "dashboards": [
+    {
+      "id": "lista",
+      "name": {
+        "pl": "Zakupy",
+        "en": "Shopping"
+      },
+      "description": {
+        "pl": "Lista do odhaczania i dopisywania z telefonu",
+        "en": "The list to tick off and add to from a phone"
+      }
+    }
+  ],
+  "docs": [
+    {
+      "title": "README",
+      "file": "README.md"
+    }
+  ],
+  "tags": [
+    "shopping",
+    "list",
+    "dashboard",
+    "voice"
+  ],
+  "actions": [
+    {
+      "name": "add",
+      "description": {
+        "pl": "Dodaj produkty do listy zakupów. Jeden albo kilka w jednym tekście, z ilością lub bez: „2 mleka, chleb i masło”. Produktu, który już jest na liście, nie dubluje; kupiony wraca na listę.",
+        "en": "Add products to the shopping list. One or several in one text, with or without a quantity: \"2 mleka, chleb i masło\". A product already on the list is not duplicated; a bought one goes back on the list."
+      },
+      "params": {
+        "item": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Nazwa produktu tak, jak ją powiedział użytkownik, np. „mleko”. Można podać kilka: „mleko, chleb i masło”.",
+            "en": "The product name as the user said it, in Polish, e.g. \"mleko\". Several at once: \"mleko, chleb i masło\"."
+          }
+        }
+      }
+    },
+    {
+      "name": "remove",
+      "description": {
+        "pl": "Usuń produkty z listy zakupów (gdy użytkownik się rozmyślił). Wielkość liter i polskie znaki nie mają znaczenia, wystarczy początek nazwy, jeśli pasuje do jednego produktu.",
+        "en": "Remove products from the shopping list (the user changed their mind). Case and Polish diacritics do not matter; the start of a name is enough when it matches one product."
+      },
+      "params": {
+        "item": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Nazwa produktu tak, jak ją powiedział użytkownik, np. „mleko”. Można podać kilka: „mleko, chleb i masło”.",
+            "en": "The product name as the user said it, in Polish, e.g. \"mleko\". Several at once: \"mleko, chleb i masło\"."
+          }
+        }
+      }
+    },
+    {
+      "name": "done",
+      "description": {
+        "pl": "Oznacz produkty jako kupione („kupiłem mleko”). Zostają na liście przekreślone, dopóki ktoś nie usunie kupionych.",
+        "en": "Mark products as bought (\"I bought the milk\"). They stay on the list crossed out until the bought ones are cleared."
+      },
+      "params": {
+        "item": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Nazwa produktu tak, jak ją powiedział użytkownik, np. „mleko”. Można podać kilka: „mleko, chleb i masło”.",
+            "en": "The product name as the user said it, in Polish, e.g. \"mleko\". Several at once: \"mleko, chleb i masło\"."
+          }
+        }
+      }
+    },
+    {
+      "name": "list",
+      "description": {
+        "pl": "Co jest do kupienia. Zwraca produkty jeszcze niekupione i gotowe zdanie po polsku do przeczytania (text).",
+        "en": "What is left to buy. Returns the products not bought yet and a ready Polish sentence to read out (text)."
+      }
+    },
+    {
+      "name": "clear_done",
+      "description": {
+        "pl": "Usuń z listy wszystkie kupione produkty. Niekupione zostają.",
+        "en": "Remove every bought product from the list. The ones not bought stay."
+      }
+    },
+    {
+      "name": "clear_all",
+      "description": {
+        "pl": "Wyczyść całą listę zakupów, także niekupione produkty. Nie da się tego cofnąć.",
+        "en": "Empty the whole shopping list, the products not bought included. It cannot be undone."
+      },
+      "confirm": true
+    }
+  ]
+}

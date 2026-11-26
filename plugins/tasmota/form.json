@@ -1,0 +1,80 @@
+{
+  "code": true,
+  "settings": {
+    "subnet": {
+      "type": "string", "required": true,
+      "label": { "pl": "Sieć do wyszukiwania", "en": "Network to search" },
+      "description": { "pl": "Sieć /24 urządzeń Tasmota: adres jednego z nich z .0/24 na końcu, np. 192.168.0.0/24", "en": "The /24 network of the Tasmota devices: one's address ending in .0/24, e.g. 192.168.0.0/24" }
+    },
+    "password": {
+      "type": "secret",
+      "label": { "pl": "Hasło WWW urządzeń", "en": "Devices' web password" },
+      "description": { "pl": "Tylko gdy urządzenia mają hasło (Configure Other → Web Admin Password); użytkownik admin", "en": "Only when the devices have one (Configure Other → Web Admin Password); user admin" }
+    },
+    "interval": {
+      "type": "number", "default": 10, "min": 2, "max": 300, "unit": "s",
+      "label": { "pl": "Odczyt stanu co", "en": "Read the state every" }
+    },
+    "dashboard": {
+      "type": "boolean", "default": false,
+      "label": { "pl": "Utwórz dashboard", "en": "Create a dashboard" }
+    },
+    "dashboardName": {
+      "type": "string", "default": "Tasmota", "showIf": { "dashboard": true },
+      "label": { "pl": "Nazwa dashboardu", "en": "Dashboard name" }
+    },
+    "dashboardAuth": {
+      "type": "enum", "options": ["session", "pin", "public"], "default": "session", "required": true, "showIf": { "dashboard": true },
+      "optionLabels": {
+        "session": { "pl": "Zalogowani do panelu", "en": "Signed in to the panel" },
+        "pin": { "pl": "Z kodem PIN", "en": "With a PIN" },
+        "public": { "pl": "Każdy w sieci domowej", "en": "Anyone at home" }
+      },
+      "label": { "pl": "Kto może otworzyć dashboard", "en": "Who can open the dashboard" }
+    }
+  },
+  "devices": {
+    "discover": true,
+    "max": 64,
+    "fields": {
+      "id": {
+        "type": "string", "required": true, "readonly": true,
+        "label": { "pl": "Id", "en": "Id" }
+      },
+      "ip": {
+        "type": "host", "required": true,
+        "label": { "pl": "Adres IP", "en": "IP address" }
+      },
+      "relay": {
+        "type": "number", "default": 1, "min": 1, "max": 8, "step": 1,
+        "label": { "pl": "Przekaźnik", "en": "Relay" }
+      },
+      "name": {
+        "type": "string", "required": true,
+        "label": { "pl": "Nazwa", "en": "Name" }
+      },
+      "area": {
+        "type": "string",
+        "label": { "pl": "Pomieszczenie", "en": "Room" }
+      },
+      "expose": {
+        "type": "enum", "options": ["switch", "light", "none"], "default": "switch",
+        "optionLabels": {
+          "switch": { "pl": "Przełącznik", "en": "Switch" },
+          "light": { "pl": "Światło", "en": "Light" },
+          "none": { "pl": "Nie wystawiaj", "en": "Don't expose" }
+        },
+        "label": { "pl": "Wystaw jako", "en": "Expose as" }
+      },
+      "bind": {
+        "type": "object",
+        "label": { "pl": "Powiąż z obiektem", "en": "Bind to object" },
+        "description": { "pl": "Ścieżka DOUT z Grentona (np. CLU221000002.DOU0001) albo wystawionego VirtualSwitch (path z expose)", "en": "The path of a Grenton DOUT (e.g. CLU221000002.DOU0001) or of an exposed VirtualSwitch (its expose path)" }
+      },
+      "power": {
+        "type": "boolean", "default": false,
+        "label": { "pl": "Pomiar mocy", "en": "Power meter" }
+      }
+    }
+  }
+}

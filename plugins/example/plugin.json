@@ -1,15 +1,41 @@
 {
   "id": "example",
   "name": "Example Plugin",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "author": "vCLU Team",
   "license": "MIT",
   "description": "Przykładowy plugin pokazujący jak pisać własne pluginy dla vCLU z expose API",
-
+  "api": 2,
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "api.example.com"
+      ]
+    },
+    "lan": {
+      "why": {
+        "pl": "Przykładowe urządzenie pod adresem, który podasz",
+        "en": "An example device at the address you give"
+      }
+    },
+    "mqtt": {
+      "subscribe": [
+        "home/example/set"
+      ],
+      "publish": [
+        "home/example/#"
+      ]
+    }
+  },
   "docs": [
-    { "title": "Getting Started", "file": "README.md" }
+    {
+      "title": "Getting Started",
+      "file": "README.md"
+    }
   ],
-
   "config": {
     "greeting": {
       "type": "string",
@@ -29,18 +55,35 @@
       "description": "Czy plugin aktywny"
     }
   },
-
   "exports": {
     "sensors": [
-      { "id": "value", "type": "number", "description": "Aktualna wartość" },
-      { "id": "ready", "type": "sensor", "description": "Status gotowości (0/1)" }
+      {
+        "id": "value",
+        "type": "number",
+        "description": "Aktualna wartość"
+      },
+      {
+        "id": "ready",
+        "type": "sensor",
+        "description": "Status gotowości (0/1)"
+      }
     ],
     "controls": [
-      { "id": "target", "type": "number", "description": "Wartość docelowa (odczyt/zapis)" }
+      {
+        "id": "target",
+        "type": "number",
+        "description": "Wartość docelowa (odczyt/zapis)"
+      }
     ],
     "events": [
-      { "name": "example:updated", "description": "Dane zaktualizowane" },
-      { "name": "example:error", "description": "Błąd" }
+      {
+        "name": "example:updated",
+        "description": "Dane zaktualizowane"
+      },
+      {
+        "name": "example:error",
+        "description": "Błąd"
+      }
     ]
   }
 }

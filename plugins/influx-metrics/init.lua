@@ -40,7 +40,7 @@
 
 local plugin = Plugin:new("influx-metrics", {
     name = "InfluxDB Metrics",
-    version = "1.1.2",
+    version = "1.2.0",
     description = "Send metrics to InfluxDB/Telegraf/VictoriaMetrics"
 })
 

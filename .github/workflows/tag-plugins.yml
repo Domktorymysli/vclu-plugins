@@ -3,7 +3,8 @@ name: Tag plugin releases
 on:
   push:
     branches: [main]
-    paths: ['plugins/*/plugin.json']
+    paths: ['plugins/*/plugin.json', 'plugins.json']
+  workflow_dispatch: # fills in sha256 for tags made before it existed
 
 permissions:
   contents: write
@@ -46,6 +47,11 @@ jobs:
             fi
           done
 
+          # sha256 of each tagged version's files, read from its tag: vclu installs only those
+          HASHES=0
+          python3 .github/scripts/index-hashes.py || HASHES=1
+          git diff --quiet plugins.json || CHANGED=true
+
           if [ "$CHANGED" = true ]; then
             # Update manifest timestamp
             jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.updated = $ts' \
@@ -60,3 +66,5 @@ jobs:
           else
             echo "No version bumps detected"
           fi
+          # tags and digests that could be written are pushed; a listing without them fails the run
+          exit $HASHES

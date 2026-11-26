@@ -1,4 +1,4 @@
-# Writing vCLU Plugins
+# Writing vclu Plugins
 
 How plugins are built: the runtime API, the sandbox, factory plugins and tests.
 For the list of plugins and how to install them, see [README.md](README.md).
@@ -58,9 +58,8 @@ plugin:kvHas(key)
 plugin:kvList(prefix)
 plugin:kvGetAll()
 
--- Access other plugins
-local other = Plugin.getPlugin("@vclu/weather")
-local all = Plugin.list()
+-- Another plugin: read-only, its sensors and controls
+local other = Plugin.getPlugin("@jan/other-plugin")
 ```
 
 ---
@@ -85,8 +84,11 @@ plugins/my-plugin/
   "author": "your-name",
   "license": "MIT",
 
-  "requires": {
-    "vclu": ">=1.0.0"
+  "api": 2,
+  "requires": { "vclu": ">=1.13.0" },
+  "permissions": {
+    "internet": { "hosts": ["api.example.com"] },
+    "lan": { "ports": [80], "why": { "pl": "Urządzenie w domu", "en": "The device in the house" } }
   },
 
   "config": {
@@ -125,7 +127,7 @@ plugins/my-plugin/
 ## Plugin Template
 
 ```lua
---- My Plugin for vCLU
+--- My Plugin for vclu
 -- @module plugins.my-plugin
 
 --------------------------------------------------------------------------------
@@ -312,9 +314,13 @@ local plugin = Plugin:new(id, options)
 
 ```lua
 -- Called when plugin loads with config from .vclu.json
-plugin:onInit(function(config)
+plugin:onInit(function(config, info)
     -- config contains user configuration
     local apiKey = config.apiKey
+    -- info.version: this version; info.previousVersion: the one before an update (vclu 1.13+)
+    if info and info.previousVersion then
+        migrate(info.previousVersion) -- e.g. move KV data or read an old setting's name
+    end
 end)
 
 -- Called when plugin unloads (optional - resources auto-cleanup)
@@ -322,6 +328,13 @@ plugin:onCleanup(function()
     -- Custom cleanup logic
 end)
 ```
+
+`info.previousVersion` is set on the first start after an update and stays until an init
+succeeds, so a migration that fails runs again on the next start: write it so it can run twice.
+It may be newer than `info.version` when the user went back to an older version. A fresh
+install and an ordinary restart have none. Settings saved by the wizard are not migrated by vclu: do not
+change the meaning or type of an existing form field, add a new one and read the old one
+here.
 
 ### HTTP Requests
 
@@ -523,6 +536,11 @@ local sensor = plugin:getObject("sensor")
 local clu = plugin:getObject("CLU.DOU5998")
 ```
 
+### Plugin id
+
+The namespace and the id are lower case: `a-z`, digits, `.`, `_` and `-`, with no `--` and no
+`-` at either end (`@jan/my-plugin`). vclu refuses any other id.
+
 ### Events
 
 #### `plugin:emit(name, data, opts)`
@@ -580,7 +598,18 @@ plugin:clearTimer(timerId)
 plugin:clearTimer(intervalId)
 ```
 
+Every call into the plugin's code, a timer's included, has a time limit (vclu 1.13+, see
+"Time limit" below).
+
 ### MQTT
+
+Needs `"mqtt"` in the permissions of `plugin.json`, with the topic filters it subscribes to and
+publishes on; the plugins page shows them and the user may narrow them. Without either list it
+asks for any topic and needs `"why"`:
+
+```json
+"permissions": { "mqtt": { "subscribe": ["zigbee2mqtt/#"], "publish": ["zigbee2mqtt/+/set"] } }
+```
 
 ```lua
 -- Publish string
@@ -597,6 +626,170 @@ plugin:mqttSubscribe("home/+/set", function(topic, payload)
     plugin:log("info", topic .. " = " .. payload)
 end)
 ```
+
+### UDP to devices
+
+`"udp"` (vclu 1.13+, plugin API 2) is for devices with a local UDP protocol, such as an air
+conditioner. It needs no `clu`: installing allows it like `lan`, and the user can limit it to some
+hosts. The socket sends to local addresses only, on the ports `plugin.json` lists (at most 8),
+not to the vclu it runs in, not to the ports vclu listens on and never to the CLU ports 1234 and
+69 (those belong to `clu` and `tftp`). It broadcasts only to the ports in `broadcast` (among
+`ports`), and not at all when the user limited it to some hosts:
+
+```json
+"permissions": { "udp": { "ports": [7000], "broadcast": [7000] } }
+```
+
+```lua
+local socket, err = plugin:udpSocket()               -- a free port of its own
+socket:onReceive(function(bytes, ip, port) end)       -- answers only (see below)
+socket:broadcast(7000, '{"t":"scan"}')                -- true, or nil and an error
+socket:send("192.168.1.40", 7000, packet)
+socket:close()
+```
+
+A plugin does not listen: its socket takes a free port (another port is refused) and hears only
+answers, from an address it sent to or, after a broadcast, from a local address with the port it
+broadcast to. Devices that send without being asked wait for `udp.listen`, kept for later.
+
+### TCP and telnet
+
+`"tcp"` (vclu 1.13+, plugin API 2) is for devices with a TCP protocol of their own: a local Tuya
+socket, a telnet console. Installing allows it like `lan`, and the user can limit it to some
+hosts. It lists the ports it connects to, at least one and at most 8; a port that belongs to
+another permission (1234 `clu`, 69 `tftp`, 502 `modbus`, 1883 and 8883 `mqtt`) is refused:
+
+```json
+"permissions": { "tcp": { "ports": [23] } }
+```
+
+```lua
+local conn, err = plugin:tcpConnect({ host = "192.168.1.20", port = 23, timeout = 5 })
+conn:onConnect(function() conn:send("status\r\n") end)   -- send works once connected
+conn:onReceive(function(bytes) end)                      -- in order, possibly in pieces
+conn:onClose(function(reason) end)                       -- the device or the network ended it
+conn:isOpen()
+conn:close()                                             -- no onClose for your own close
+```
+
+It connects only to an IPv4 address on the local network, not the vclu it runs in, in the
+background (`timeout` in seconds, 5 by default, at most 30). `send` queues the bytes and returns
+nil and an error before `onConnect`, after the end or with 1 MiB not sent yet. A plugin is a
+client only, it does not listen.
+
+For a telnet console wrap the connection; `Telnet` needs no permission of its own:
+
+```lua
+local t = Telnet.wrap(conn)                       -- { newline = "\r\n" } by default
+t:onPrompt("login: $", function() t:send("admin") end)
+t:onPrompt("> $", function() t:send("show status") end)
+t:onLine(function(line) Logger:info(line) end)
+```
+
+`Telnet.wrap` takes the connection's `onReceive`. It answers every DO with WONT and every WILL
+with DONT, so the device stays in plain line mode, drops subnegotiation and other commands, and
+gives the text as lines (without the line end) and prompts (text without a line end that matches
+a pattern; end it with `$`). `t:send(line)` adds the newline, `t:sendRaw(bytes)` sends as is.
+
+`validate.yml` checks the manifest as vclu reads it (`.github/scripts/check-manifest.py`).
+
+### WebSocket
+
+`plugin:websocket(url, opts)` (vclu 1.13+) is a WebSocket client for services that push changes:
+Tuya's message service, Shelly Gen2 (`ws://<ip>/rpc`), Home Assistant. It has no permission of
+its own: it reaches what the plugin's HTTP reaches, an internet host on the `internet` list
+(`wss://` or `ws://`) and a local address with `lan`, on its ports and hosts, never the vclu it
+runs in:
+
+```json
+"permissions": { "lan": { "ports": [80, 8123] } }
+```
+
+```lua
+local ws, err = plugin:websocket("wss://mq.example.com/ws", {
+    headers = { Authorization = "Bearer " .. token },   -- not Host, Upgrade, Connection, Sec-WebSocket-*
+    protocols = { "json" },
+    timeout = 10,                                         -- seconds, at most 30
+})
+ws:onOpen(function(protocol) ws:send('{"subscribe":"status"}') end)  -- send works once open
+ws:onMessage(function(data, binary) end)                  -- one whole message, at most 1 MiB
+ws:onClose(function(code, reason) end)                    -- the server or the network ended it
+ws:send(bytes, { binary = true })
+ws:isOpen()
+ws:close(1000, "bye")                                     -- 1000 or 3000-4999; no onClose for your own close
+```
+
+It connects in the background, and a redirect or another HTTP answer to the handshake ends it in
+`onClose` with the status. `send` returns nil and an error before `onOpen`, after the end or with
+1 MiB not sent yet. Reconnecting is the plugin's: start a timer in `onClose`. A user narrowing
+`lan` or the internet list closes the connections it no longer allows.
+
+### CLU communication, TFTP and serial ports
+
+Three permissions for plugins that work below HTTP: `"clu"`, `"tftp"` and `"serial"`, each with
+`"why"`. They reach a CLU's commands, files on devices and whatever is on a port, so installing a
+plugin does not allow them: the user does, on the plugins page, after a warning. Until then the
+methods below raise an error. The user can also limit `clu` and `tftp` to some hosts (a list stops
+broadcasts unless the user also allows finding CLUs), and assigns the serial ports. Reading a
+CLU's features through the registry (`_:get("CLU1.DOU1"):get(n)`) needs `clu` too.
+
+```json
+"permissions": { "clu": { "why": { "pl": "Wysyłka konfiguracji do CLU", "en": "Sends the configuration to the CLU" } } }
+``` Neither the socket nor the TFTP client reaches the vclu the plugin runs in or
+anything outside the local network.
+
+```lua
+-- clu: a UDP socket of the plugin's own on a free port; it hears answers only, as udpSocket
+local socket, err = plugin:grentonSocket()
+socket:onReceive(function(bytes, ip, port) end)
+socket:send("192.168.1.10", 1234, frame)   -- true, or nil and an error
+socket:broadcast(1234, frame)               -- only to the CLU port, for discovery
+socket:close()
+
+-- clu: the CLU cipher; key and IV raw or in base64, as in the CLU's configuration.
+-- The plugin brings the key (its config); vclu does not hand out its own.
+local cipher = plugin:grentonCipher(config.key, config.iv)
+local plain, err = cipher:decrypt(bytes)
+local frame = cipher:encrypt("req:...")
+
+-- tftp: reading and writing files on a device
+local device = plugin:tftp("192.168.1.10", { port = 69 })
+device:get("a.lua", function(bytes, err) end)
+device:put("a.lua", bytes, function(ok, err) end)
+
+-- serial: only a port the user assigned to the plugin
+local port, err = plugin:serialOpen("/dev/ttyUSB0", { baud = 9600, data = 8, parity = "none", stop = 1 })
+port:onData(function(bytes, err) end)  -- (nil, err) once, when the port fails
+port:write(bytes)
+port:close()
+```
+
+Bytes are Lua strings. Sockets and ports close when the plugin is disabled or removed.
+
+### Actions
+
+Actions are what voice assistants and agents (MCP) call: "add milk to the shopping list".
+`plugin.json` declares them, so the user sees them when installing and an update that adds one
+waits for the user:
+
+```json
+"actions": [
+  { "name": "add", "description": { "pl": "Dodaj produkty do listy", "en": "Add products to the list" },
+    "params": { "item": { "type": "string", "required": true, "description": { "pl": "…", "en": "…" } } } },
+  { "name": "clear_all", "description": { "pl": "Wyczyść listę", "en": "Empty the list" }, "confirm": true }
+]
+```
+
+```lua
+plugin:action("add", function(params) return plugin:add(params.item) end)   -- nil, err refuses
+plugin:action("clear_all", function() return plugin:clearAll() end)
+```
+
+`name` is a lower-case letter, then up to 63 letters, digits and `_`; at most 32 actions and 32
+params each; a param is `"string"`, `"number"` or `"boolean"`. vclu checks the params before
+calling the function. `"confirm": true` marks an action that cannot be undone: an agent calls it
+only after the user agreed, and plugin code cannot turn that off. `plugin:action` with a name
+`plugin.json` does not declare raises an error.
 
 ### Type Coercion
 
@@ -631,6 +824,28 @@ plugin:logSafe("info", "API request", {
 
 **Auto-redacted fields:** `token`, `password`, `apiKey`, `secret`, `key`, `auth`, `bearer`
 
+### Secrets
+
+A token or a password the user types in the plugin's wizard (a `"type": "secret"` field of its
+form, vclu 1.13+) is kept apart from the plugin's config and reaches only the plugin:
+
+```lua
+plugin:onInit(function(cfg)
+    local token = plugin:secret("token")   -- nil when the user did not set it
+    plugin:httpRequest({ url = cfg.url, headers = { Authorization = plugin:bearerAuth(token) } },
+        function(resp)
+            if resp.err then plugin:log("error", "status: " .. resp.err) end
+        end)
+end)
+```
+
+Keep it in a local variable. **Never put a secret in a sensor, an exposed object,
+`createObject`/`upsertObject`, an event or a log line:** other plugins, agents and MQTT/Home
+Assistant read those. vclu masks the plugin's secret values as `***` in what it logs
+(`plugin:log`, `plugin:logSafe`, `Logger`, `print`), as a safety net, not as a way to log them.
+A secret shorter than 4 characters (a PIN) is masked only where it stands alone, not inside a
+longer word or number.
+
 ### Persistence (KV Store)
 
 Persistent key-value storage for plugin state across restarts.
@@ -638,6 +853,9 @@ Persistent key-value storage for plugin state across restarts.
 ```
 Storage: /var/lib/vclu/plugins/<plugin-id>.json
 ```
+
+Limits: a key up to 128 characters, a value up to 256 KiB as JSON, the whole store up to 1 MiB;
+`kvSet` over them returns an error and changes nothing.
 
 #### `plugin:kvGet(key, default)`
 
@@ -666,7 +884,7 @@ plugin:kvSet("access_token", token, {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `secure` | boolean | false | Hide from logs, UI, registry export |
+| `secure` | boolean | false | Hide from logs, UI, registry export; the file is not encrypted |
 | `ttl` | number | nil | Time-to-live in seconds |
 
 #### `plugin:kvDelete(key)`
@@ -732,19 +950,52 @@ plugin:kvSet("feature_enabled", true)
 ### Plugin Access
 
 ```lua
--- Get another plugin
-local weather = Plugin.getPlugin("@vclu/weather")
-if weather then
-    local temp = weather:getTemperature()
-    plugin:log("info", "Temperature: " .. tostring(temp))
-end
-
--- List all plugins
-local plugins = Plugin.list()
-for _, p in ipairs(plugins) do
-    plugin:log("debug", p.id .. " v" .. p.version)
+-- Another plugin is read-only: its sensors and controls, not its config or methods
+local other = Plugin.getPlugin("@jan/other-plugin")
+local sensor = other and other:get("value")
+if sensor then
+    plugin:log("info", "value: " .. tostring(sensor:get()))
 end
 ```
+
+A module (not a plugin) calls another plugin's methods, e.g. `Plugin.getPlugin("@vclu/telegram"):send(...)`,
+through the boundary below.
+
+### What crosses between a module and a plugin
+
+On plugin API 2 a module never holds the plugin itself. `Plugin.getPlugin(id)` (and
+`_:get("@ns/id")`) gives it the plugin's methods and the core's `get`, `on`, `getExposed`,
+`dashboardAccess`, `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
+not its config, KV store, timers or its own state (a plugin offers what a module reads as a method).
+Its published sensors and controls (`get`, `listSensorsAndControls`) are readable by modules
+and other plugins, read-only: publish nothing private there. Every value that crosses is one of these
+(vclu 1.13; the same rules hold when each plugin gets its own Lua state):
+
+| What | How it crosses |
+|---|---|
+| number, string, boolean, nil | as it is |
+| plain table (no functions, no metatable) | a copy, both ways; at most 32 levels, no cycles |
+| a table with functions or a metatable, from the plugin | a **handle**: its methods; its plain fields read as copies, never its `_` fields; the same object is always the same handle (`==` works) |
+| a module's function the plugin calls (`onChange`, a callback) | runs **after** the plugin's code, in order; what it returns is lost |
+| a house object (registry, CLU) from a module | read-only for the plugin: give a path (`"CLU220000000.DOU0001"`) for it to act on |
+| a handle of another plugin | refused: give its path or plain data |
+| an error raised across | text: `pcall` gets the message, never a table of the other side (raise a string; vclu enforces it with one Lua state per plugin) |
+
+So, in a module:
+
+```lua
+local tasmota = Plugin.getPlugin("@vclu/tasmota")
+local lamp = tasmota:device({ ip = "192.168.1.50" }):relay(1)  -- a handle
+lamp:switchOn()                                                 -- a method: fine
+lamp.state = 1                                                  -- stays on your handle, the plugin never sees it
+lamp:onChange(function(v) Logger:info(v) end)                   -- called after the plugin's update, not inside it
+```
+
+Not: keep a table you gave the plugin and change it later (the plugin has a copy), read a plugin's
+fields that start with `_`, or use the plugin's timers and store (`plugin:setTimeout`,
+`plugin:kvGet`) from a module — a module has `EventBus:getShared():setTimeout` and its own KV.
+When the plugin stops (turned off, suspended, reloaded) its handles say `@ns/id: stopped`; take
+them again with `Plugin.getPlugin` after it loads.
 
 ---
 
@@ -854,6 +1105,130 @@ Plugins run in an isolated sandbox:
 
 All resources (timers, subscriptions, events) are automatically cleaned up when plugin unloads.
 
+`string`, `table` and `math` are the plugin's own copies; `Logger`, `JSON` and `Plugin`
+cannot be modified, and on plugin API 2 there is no `HTTP` or `MQTT` global: use
+`plugin:httpRequest` and `plugin:mqttSubscribe`. Objects the plugin did not create, other plugins included, are
+read-only: only `get`, `getX`, `isX` and `hasX` methods can be called on them, and another
+plugin shows only its sensors and controls.
+
+### Plugin API version
+
+`"api"` in `plugin.json` names the contract the plugin is written for. New plugins use `2`.
+
+| `api` | Contract |
+|-------|----------|
+| none or `1` | The contract from before permissions: `lan`, `mqtt` and `modbus` without declaring them, events and expose paths with any name, the `HTTP` and `MQTT` globals. Kept so existing plugins run without changing their manifest; the isolation above still applies (no methods on objects the plugin did not create, no `Plugin.list`). vclu logs a notice. |
+| `2` | Only the declared permissions, events and expose paths under the plugin's prefix, HTTP and MQTT through the plugin API. |
+
+The isolation above holds on every version. A plugin for a newer API than the vclu it is
+installed on does not load and says to update vclu; `Plugin.apiVersion` is the highest
+version the runtime runs. A vclu in strict mode (`"strict": true` in the `plugins` section of
+`.vclu.json`) loads only API 2 or later. A vclu from before plugin API versions ignores the field
+and runs every plugin on the old contract.
+
+### Permissions
+
+On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet included. Each
+permission is an object with its parameters; `true` is short for one without any, where that
+does not mean "everything". `"why"` (a text or `{"pl", "en"}`, one line up to 200 characters, no
+markup) goes into the install dialog; a wide permission needs it.
+
+| Permission | Gives | Parameters |
+|------------|-------|------------|
+| `"internet"` | HTTP and WebSocket to these internet hosts | `hosts` (required; `["*"]` any host, with `why`) |
+| `"lan"` | HTTP and WebSocket to the house's devices (local addresses, checked after DNS), never vclu's own ports | `ports`; without them any port, with `why` |
+| `"udp"` | a UDP socket for local devices, not the CLU | `ports` (required), `broadcast` (among `ports`) |
+| `"tcp"` | TCP connections to local devices | `ports` (required) |
+| `"mqtt"` | `plugin:mqttSubscribe`, `plugin:mqttPublish` | `subscribe`, `publish` (topic filters); without both any topic, with `why` |
+| `"modbus"` | the `Modbus` table | `true` or `{ "why" }` |
+| `"clu"` | CLU socket, cipher and reads; the user allows it in the panel | `why` (required) |
+| `"tftp"` | a TFTP client; the user allows it in the panel | `why` (required) |
+| `"serial"` | a serial port the user assigns | `why` (required) |
+
+Ports: at most 8 per list, never one of another permission (1234 `clu`, 69 `tftp`, 502 `modbus`,
+1883 and 8883 `mqtt`). Hosts: at most 32. Topic filters: at most 32.
+
+`"permissions": {}` asks for none; an API 2 plugin without the field does not load. A key or a
+field this vclu does not know (a permission of a newer vclu) refuses the plugin with "needs a
+newer vclu", at download and at load, so a plugin never runs with less than it was written for.
+
+The plugins page shows each permission in one sentence with its parameters and why, marks the
+wide ones (any host, any local port, any topic) and those only the user allows, and warns about
+combinations: reading the house (`lan`, `udp`, `tcp`, `modbus`, `mqtt`) together with the
+internet, `clu` with `tftp` or with the internet.
+
+#### Internet hosts
+
+| In `permissions` | Means | The plugins page |
+|---|---|---|
+| `"internet": { "hosts": ["openapi.tuyaeu.com", "*.tuyaeu.com"] }` | only these hosts | "Internet: connects to: …" |
+| `"internet": { "hosts": ["*"], "why": "…" }` | any host on the internet | a warning: it can connect to any server |
+| no `internet` | no internet | "Internet" in grey |
+
+- An entry is a host name, `*.domain` for the domain's subdomains (`*.tuyaeu.com` matches
+  `openapi.tuyaeu.com`, not `tuyaeu.com`; add both when the plugin calls both), or an exact IP
+  address. No scheme, path, port or user. A non-ASCII name goes in its `xn--` form.
+- vclu checks the host name in the URL, before the request and after every redirect, and the
+  address it resolves to. An IP address in the URL matches only the same address on the list.
+- The LAN is separate: a device in the house needs `lan`, also when its name is on the list.
+- A request to a host that is not on the list fails with
+  `api.example.com is not on the host list of @vclu/foo (permissions.internet)`.
+- Plugin API 1 (no `"api"`) reaches any host, as before.
+
+In this repository every `http(s)://` host written in the plugin's Lua must be on the list
+(`.github/scripts/check-internet.py`).
+
+#### What waits for the user
+
+Installing records what the install dialog showed: the hosts, ports, topic filters and actions.
+An update that asks for more (a new host, `"*"`, a new port, `lan` without ports, a new topic
+filter, a new action, a new permission) runs with what was allowed before until the user allows
+the rest on the plugins page; keep the lists exact so the user is not asked again without need.
+`clu`, `tftp` and `serial` never come with installing. The user may narrow a grant, never widen
+it past `plugin.json`.
+
+#### Requires and newer features
+
+`"requires": { "vclu": ">=1.13.0" }` (only `>=X.Y.Z`) is checked at download and at load: an
+older vclu says to update. Inside plugin API 2 newer vclu versions add methods, permission fields
+and form field types; check with `plugin:has(name)` (a method such as `"websocket"`,
+`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. `plugin:httpGet` and
+`plugin:httpPost` are deprecated (logged once): use `plugin:httpRequest`.
+
+Names kept for later permissions (refused today like any unknown one): `webhooks`, `files`,
+`notify`, `gpio`, `i2c`, `onewire`, and `udp.listen`. A key of your own at the top of
+`plugin.json` starts with `x-`; another key vclu does not read is logged.
+
+#### Never
+
+- A plugin is a client: it does not listen on a port. Incoming requests will come through vclu's
+  own server (`webhooks`), not a socket of the plugin.
+- A plugin does not write the house's objects (registry, CLU): a module of the user maps the
+  plugin's objects to the house.
+- The house's objects reach a plugin as paths (`"CLU2.DOU1"`), read through `_:get(path)`, not as
+  values handed over.
+- Callbacks between a module and a plugin may run later than the call that set them off; do not
+  rely on the order across plugins, nor on sharing a table with a module.
+
+#### Time limit
+
+All plugins, modules and dashboards share one Lua loop, so the plugin's code gets at most 2 s of
+one call (10 s for `init.lua` and `init`), wherever it is called from: a timer, a device's answer,
+an action, its dashboard, a method a module calls. Over it the plugin's code stops with
+`callback over 2s` in the log and the rest of vclu goes on; `pcall` does not hold it. A plugin
+over the limit 3 times in 10 minutes is suspended: turned off until the user turns it on on the
+plugins page (or vclu restarts). Split long work into steps in timers or device answers.
+
+`Crypto` (hashes, HMAC, AES, random bytes, hex and base64) and `bit` (LuaJIT BitOp) need no
+permission on either API; the plugin gets its own copies. See the Lua reference on docs.vclu.pl.
+
+### Events
+
+On plugin API 2, events a plugin emits start with its prefix, so it cannot pass for another integration:
+an official plugin's short id or the id's first word (`sun-position` emits `sun:rise`), any
+other plugin's full id (`@jan/foo` emits `@jan/foo:changed`). `init`, `cleanup` and `timers`
+of the instance belong to vclu; a poller and an expose handle are used through their methods.
+
 ---
 
 ## Factory Plugins
@@ -878,7 +1253,7 @@ Pitfalls found the hard way:
 - **Methods and state share one table.** A field named like a method replaces
   it at the first assignment (`self._playback = "play"` kills
   `self:_playback()`). Keep state under different names than methods.
-- **Duplicate ids.** Sensor and poller names are flat across vCLU. Derive them
+- **Duplicate ids.** Sensor and poller names are flat across vclu. Derive them
   from the instance `id`, and on a duplicate log an error and return the
   existing instance instead of replacing it.
 - **KV is per plugin, not per instance.** Prefix keys with the instance id:
@@ -909,10 +1284,31 @@ That object follows the expose contract:
 - One object is one type. A receiver with power and volume is two objects
   (`switch` and `number`); HA has no MQTT media player.
 
+### Dashboards: the plugin builds, the user grants access
+
+Declare each dashboard in `plugin.json` (up to 8; id `[a-z0-9_]`, up to 64):
+
+```json
+"dashboards": [{ "id": "lista", "name": { "pl": "Zakupy", "en": "Shopping" }, "description": "..." }]
+```
+
+On API 2 `plugin:dashboard(id)` builds only a declared id, at `/d/<shortId>_<id>`, named as
+declared. The plugin may keep it behind login (`:auth("session")`, the default) or a PIN
+(`:auth("pin")`); `:auth("public")`, `:pin()`, `:remote()` and `:roles()` are refused: who else
+opens it is the user's. The plugin wizard shows a Dashboards step for it and writes the user's
+choice as code, which people and agents can also write by hand in a module:
+
+```lua
+Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", { auth = "public", remote = { roles = { "domownicy" } } })
+```
+
+`test/harness.lua` checks the same: `harness.install({ dashboards = { lista = "Zakupy" } })`
+refuses an undeclared id, and the builder refuses public, a PIN code, remote and roles.
+
 ## Testing
 
 `test/harness.lua` stands in for the runtime, so a plugin runs under a bare
-`lua` with no vCLU. Responses follow the runtime: an HTTP responder returns
+`lua` with no vclu. Responses follow the runtime: an HTTP responder returns
 `{ status, json }` or `{ err }`, and a status outside 2xx arrives with
 `resp.err = "HTTP <status>"`.
 
@@ -927,7 +1323,8 @@ plugin does not use it and that methods sit on the instance
 ## Creating a New Plugin
 
 1. Copy `plugins/musiccast/` for a device (factory), or `plugins/example/`
-   for a single service configured from the panel
+   for a single service configured from the panel; `plugins/tasmota/` for a device
+   factory with a wizard (discovery, expose, binding, a dashboard)
 2. Edit `plugin.json` (id, name; `config` only for the singleton kind). The id
    is the short one, the same as in `plugins.json` (`musiccast`, not
    `@vclu/musiccast`); the runtime adds the namespace for `Plugin.getPlugin`
@@ -963,4 +1360,12 @@ Create your own plugin repository:
 }
 ```
 
-2. Add repository in vCLU Web UI: **Settings > Plugin Repositories**
+2. Add repository in vclu Web UI: **Settings > Plugin Repositories**
+
+The namespace `vclu` is the official repository's: vclu does not offer or install `@vclu/...`
+plugins from any other one, a fork included. Give yours its own namespace.
+
+A listing may give `"sha256": {"plugin.json": "…", "init.lua": "…"}`, the digest of each
+file the version downloads (plugin.json, `files` or else init.lua, and `form`). vclu then
+installs only files that match, all of them. The official repository always gives them:
+`.github/scripts/index-hashes.py` writes them from each version's tag when it is tagged.

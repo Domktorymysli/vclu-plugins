@@ -1,20 +1,34 @@
 {
   "id": "frigate",
   "name": "Frigate NVR",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Integracja z Frigate NVR - detekcja obiektow, statusy kamer, eventy",
+  "api": 2,
+  "permissions": {
+    "lan": {
+      "why": {
+        "pl": "Serwer Frigate pod adresem i portem, które podasz",
+        "en": "The Frigate server at the address and port you give"
+      }
+    },
+    "mqtt": {
+      "why": {
+        "pl": "Zdarzenia Frigate pod prefiksem tematów, który podasz",
+        "en": "Frigate events under the topic prefix you give"
+      }
+    }
+  },
   "author": "vCLU",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer", "json"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "host": {
       "type": "string",
@@ -31,7 +45,10 @@
     "mode": {
       "type": "string",
       "default": "polling",
-      "enum": ["polling", "mqtt"],
+      "enum": [
+        "polling",
+        "mqtt"
+      ],
       "description": "Tryb odbioru eventow: polling (HTTP) lub mqtt (real-time)"
     },
     "interval": {
@@ -59,7 +76,6 @@
       "description": "Lista kamer (oddzielone przecinkiem, puste = wszystkie)"
     }
   },
-
   "exports": {
     "objects": {
       "stats": {
@@ -68,16 +84,37 @@
       }
     },
     "sensors": [
-      { "id": "cameraCount", "type": "number", "description": "Liczba aktywnych kamer" },
-      { "id": "totalDetections", "type": "number", "description": "Laczna liczba detekcji od startu" }
+      {
+        "id": "cameraCount",
+        "type": "number",
+        "description": "Liczba aktywnych kamer"
+      },
+      {
+        "id": "totalDetections",
+        "type": "number",
+        "description": "Laczna liczba detekcji od startu"
+      }
     ],
     "controls": [
-      { "id": "detection", "type": "boolean", "description": "Globalne wlaczenie/wylaczenie detekcji" }
+      {
+        "id": "detection",
+        "type": "boolean",
+        "description": "Globalne wlaczenie/wylaczenie detekcji"
+      }
     ],
     "events": [
-      { "name": "frigate:detection", "description": "Nowa detekcja obiektu (person, car, ...)" },
-      { "name": "frigate:updated", "description": "Dane zostaly zaktualizowane" },
-      { "name": "frigate:error", "description": "Blad komunikacji z Frigate" }
+      {
+        "name": "frigate:detection",
+        "description": "Nowa detekcja obiektu (person, car, ...)"
+      },
+      {
+        "name": "frigate:updated",
+        "description": "Dane zostaly zaktualizowane"
+      },
+      {
+        "name": "frigate:error",
+        "description": "Blad komunikacji z Frigate"
+      }
     ]
   }
 }

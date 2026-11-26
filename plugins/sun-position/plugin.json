@@ -1,20 +1,21 @@
 {
   "id": "sun-position",
   "name": "Sun Position & Astronomy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Pozycja słońca, wschody/zachody, fazy księżyca - do automatyzacji rolet i oświetlenia",
+  "api": 2,
+  "permissions": {},
   "author": "vCLU",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["timer"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "latitude": {
       "type": "number",
@@ -42,7 +43,6 @@
       "description": "Offset eventu zachodu słońca w minutach (ujemny = przed zachodem)"
     }
   },
-
   "exports": {
     "objects": {
       "sun": {
@@ -55,10 +55,22 @@
       }
     },
     "events": [
-      { "name": "sun:rise", "description": "Wschód słońca" },
-      { "name": "sun:set", "description": "Zachód słońca" },
-      { "name": "sun:noon", "description": "Południe słoneczne" },
-      { "name": "sun:position", "description": "Zmiana pozycji słońca (co 10 min)" }
+      {
+        "name": "sun:rise",
+        "description": "Wschód słońca"
+      },
+      {
+        "name": "sun:set",
+        "description": "Zachód słońca"
+      },
+      {
+        "name": "sun:noon",
+        "description": "Południe słoneczne"
+      },
+      {
+        "name": "sun:position",
+        "description": "Zmiana pozycji słońca (co 10 min)"
+      }
     ]
   }
 }

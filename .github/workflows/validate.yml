@@ -48,6 +48,31 @@ jobs:
               exit 1
             fi
 
+            # plugin.json as vclu reads it on plugin API 2: permissions as objects with their ports,
+            # topics and why, requires.vclu, actions; a key vclu does not know refuses the plugin
+            if ! python3 .github/scripts/check-manifest.py "$dir/plugin.json"; then
+              exit 1
+            fi
+            # every internet host the Lua calls is in permissions.internet.hosts
+            if ! python3 .github/scripts/check-internet.py "$dir"; then
+              exit 1
+            fi
+
+            # vclu refuses the whole manifest when a docs entry is not {title, file}: the plugin does not load
+            if ! jq -e '(.docs // []) | all(type == "object" and (.file | type) == "string")' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json: each docs entry is {\"title\": ..., \"file\": ...}"
+              exit 1
+            fi
+            # a wizard form is downloaded only when it is in files
+            if ! jq -e 'if .form then ((.files // ["init.lua"]) | index($f)) != null else true end' --arg f "$(jq -r '.form // ""' "$dir/plugin.json")" "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json: the form file is not in files"
+              exit 1
+            fi
+            # dashboards as vclu reads them, or it refuses the manifest: up to 8, ids [a-z0-9_] unique,
+            # a name as text or {pl, en} up to 60 characters, a description up to 300
+            if ! python3 .github/scripts/check-dashboards.py "$dir/plugin.json"; then
+              exit 1
+            fi
             # Check init.lua exists
             if [ ! -f "$dir/init.lua" ]; then
               echo "ERROR: Missing init.lua in $dir"

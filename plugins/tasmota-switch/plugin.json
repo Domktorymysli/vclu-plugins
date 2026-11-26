@@ -1,8 +1,19 @@
 {
-  "id": "@vclu/tasmota-switch",
+  "id": "tasmota-switch",
   "name": "Tasmota Switch",
   "version": "1.0.3",
   "description": "Factory for Tasmota switch objects (Sonoff, etc.)",
+  "api": 2,
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {
+    "lan": {
+      "ports": [
+        80
+      ]
+    }
+  },
   "author": "vCLU",
   "config": {}
 }

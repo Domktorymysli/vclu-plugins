@@ -1,20 +1,27 @@
 {
   "id": "solax",
   "name": "SolaX Inverter",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Lokalny monitoring falownika SolaX przez dongle WiFi Solarman LSW-3 (odczyt status.html, bez chmury)",
+  "api": 2,
+  "permissions": {
+    "lan": {
+      "ports": [
+        80
+      ]
+    }
+  },
   "author": "tytus",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "host": {
       "type": "string",
@@ -41,7 +48,6 @@
       "description": "Interwał odczytu w sekundach"
     }
   },
-
   "exports": {
     "objects": {
       "inverter": {
@@ -50,14 +56,39 @@
       }
     },
     "sensors": [
-      { "id": "power",  "type": "number", "unit": "W",   "description": "Moc AC chwilowa" },
-      { "id": "today",  "type": "number", "unit": "kWh", "description": "Produkcja dziś" },
-      { "id": "total",  "type": "number", "unit": "kWh", "description": "Produkcja łącznie" },
-      { "id": "online", "type": "binary_sensor", "description": "Status odczytu (0/1)" }
+      {
+        "id": "power",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc AC chwilowa"
+      },
+      {
+        "id": "today",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Produkcja dziś"
+      },
+      {
+        "id": "total",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Produkcja łącznie"
+      },
+      {
+        "id": "online",
+        "type": "binary_sensor",
+        "description": "Status odczytu (0/1)"
+      }
     ],
     "events": [
-      { "name": "solax:updated", "description": "Dane zostały zaktualizowane" },
-      { "name": "solax:error", "description": "Błąd komunikacji z donglem" }
+      {
+        "name": "solax:updated",
+        "description": "Dane zostały zaktualizowane"
+      },
+      {
+        "name": "solax:error",
+        "description": "Błąd komunikacji z donglem"
+      }
     ]
   }
 }

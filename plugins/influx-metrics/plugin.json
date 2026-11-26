@@ -1,19 +1,36 @@
 {
   "id": "influx-metrics",
   "name": "InfluxDB Metrics",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Wysyłanie metryk do InfluxDB, Telegraf, VictoriaMetrics (line protocol)",
+  "api": 2,
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "*"
+      ],
+      "why": {
+        "pl": "InfluxDB pod adresem, który podasz (InfluxDB Cloud albo serwer poza domem)",
+        "en": "InfluxDB at the address you give (InfluxDB Cloud or a server outside the house)"
+      }
+    },
+    "lan": {
+      "why": {
+        "pl": "InfluxDB w domu pod adresem i portem, które podasz",
+        "en": "InfluxDB in the house at the address and port you give"
+      }
+    }
+  },
   "author": "vCLU Team",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {}
 }

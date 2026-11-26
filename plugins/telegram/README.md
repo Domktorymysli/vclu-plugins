@@ -93,7 +93,7 @@ tg:send("`Kod`", { parseMode = "Markdown" })
 ### Alarm włamaniowy
 
 ```lua
-plugin:on("alarm:triggered", function(data)
+EventBus:getShared():on("alarm:triggered", function(data)
     local tg = Plugin.getPlugin("@vclu/telegram")
     tg:alert("ALARM!", string.format(
         "Wykryto ruch w strefie: %s\nCzas: %s",
@@ -106,7 +106,7 @@ end)
 ### Status rekuperatora
 
 ```lua
-plugin:on("salda:error", function(data)
+EventBus:getShared():on("salda:error", function(data)
     local tg = Plugin.getPlugin("@vclu/telegram")
     tg:error("Rekuperator: " .. data.error)
 end)
@@ -115,7 +115,7 @@ end)
 ### Powiadomienie o wschodzie słońca
 
 ```lua
-plugin:on("sun:rise", function(data)
+EventBus:getShared():on("sun:rise", function(data)
     local tg = Plugin.getPlugin("@vclu/telegram")
     local weather = Plugin.getPlugin("@vclu/weather")
 
@@ -132,7 +132,7 @@ end)
 
 ```lua
 -- Codziennie o 22:00
-plugin:on("time:hourChanged", function(data)
+EventBus:getShared():on("time:hourChanged", function(data)
     if data.hour == 22 then
         local tg = Plugin.getPlugin("@vclu/telegram")
         local sun = Plugin.getPlugin("@vclu/sun-position")
@@ -160,7 +160,7 @@ end)
 
 ```lua
 -- Gdy nikt nie ma być w domu
-plugin:on("door:opened", function(data)
+EventBus:getShared():on("door:opened", function(data)
     local time = Plugin.getPlugin("@vclu/time-sync")
 
     -- Tylko w godzinach pracy

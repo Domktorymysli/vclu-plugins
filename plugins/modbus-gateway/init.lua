@@ -61,7 +61,7 @@
 
 local plugin = Plugin:new("modbus-gateway", {
     name = "Modbus Gateway",
-    version = "2.1.0",
+    version = "2.2.0",
     description = "Fabryka bramek Modbus RTU po RS485-Ethernet (Modbus TCP)"
 })
 

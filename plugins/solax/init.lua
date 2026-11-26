@@ -34,7 +34,7 @@
 
 local solax = Plugin:new("solax", {
     name = "SolaX Inverter",
-    version = "1.0.0",
+    version = "1.1.0",
     description = "SolaX inverter local monitoring via Solarman LSW-3 WiFi dongle (status.html scrape)"
 })
 

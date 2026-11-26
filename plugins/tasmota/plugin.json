@@ -1,0 +1,34 @@
+{
+  "id": "tasmota",
+  "name": "Tasmota",
+  "version": "1.0.0",
+  "description": "Tasmota relays and power meters over HTTP, with a wizard: discovery, expose, binding to Grenton outputs, a dashboard",
+  "api": 2,
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {
+    "lan": {
+      "ports": [
+        80
+      ],
+      "why": {
+        "pl": "Sterowanie przekaźnikami i odczyt mocy urządzeń Tasmota przez ich stronę WWW; wyszukiwanie urządzeń w sieci domowej",
+        "en": "Switches relays and reads power from Tasmota devices over their web API; finds the devices on the home network"
+      }
+    }
+  },
+  "author": "vCLU",
+  "form": "form.json",
+  "files": [
+    "init.lua",
+    "form.json",
+    "README.md"
+  ],
+  "docs": [
+    {
+      "title": "README",
+      "file": "README.md"
+    }
+  ]
+}

@@ -60,7 +60,7 @@ expose(frigate:get("totalDetections"), "number", {
 Emitowany przy kazdej nowej detekcji obiektu.
 
 ```lua
-plugin:on("frigate:detection", function(data)
+EventBus:getShared():on("frigate:detection", function(data)
     -- data.camera    = "camera_201"
     -- data.label     = "person"
     -- data.score     = 0.87
