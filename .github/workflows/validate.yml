@@ -54,8 +54,8 @@ jobs:
               echo "ERROR: $dir/plugin.json needs \"api\": 2"
               exit 1
             fi
-            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["internet","lan","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0 and all(.permissions | to_entries[]; .key == "internet" or (.value | type) == "boolean")' "$dir/plugin.json" > /dev/null; then
-              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only internet (a list of hosts) and lan, mqtt, modbus, grenton_raw, tftp, serial set to true or false"
+            if ! jq -e '(.permissions | type) == "object" and ((.permissions | keys) - ["internet","lan","udp","mqtt","modbus","grenton_raw","tftp","serial"] | length) == 0 and all(.permissions | to_entries[]; .key == "internet" or (.value | type) == "boolean")' "$dir/plugin.json" > /dev/null; then
+              echo "ERROR: $dir/plugin.json needs \"permissions\": {} with only internet (a list of hosts) and lan, udp, mqtt, modbus, grenton_raw, tftp, serial set to true or false"
               exit 1
             fi
             # internet: hosts as vclu reads them, "*" only with "internetWhy", every host the Lua calls listed
@@ -76,6 +76,10 @@ jobs:
             # dashboards as vclu reads them, or it refuses the manifest: up to 8, ids [a-z0-9_] unique,
             # a name as text or {pl, en} up to 60 characters, a description up to 300
             if ! python3 .github/scripts/check-dashboards.py "$dir/plugin.json"; then
+              exit 1
+            fi
+            # udp broadcast ports as vclu reads them: whole ports, up to 8, never 1234 or 69, only with "udp": true
+            if ! python3 .github/scripts/check-udp.py "$dir/plugin.json"; then
               exit 1
             fi
             # Check init.lua exists

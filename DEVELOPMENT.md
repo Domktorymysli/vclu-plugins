@@ -607,6 +607,32 @@ plugin:mqttSubscribe("home/+/set", function(topic, payload)
 end)
 ```
 
+### UDP to devices
+
+`"udp": true` (vclu 1.13+, plugin API 2) is for devices with a local UDP protocol, such as an air
+conditioner. It needs no `grenton_raw`: installing allows it like `lan`, and the user can limit
+it to some hosts. The socket reaches local addresses only, not the vclu it runs in, not the ports
+vclu listens on and not the CLU ports 1234 and 69 (those need `grenton_raw` or `tftp`). It
+broadcasts only to the ports `plugin.json` lists, at most 8, and not at all when the user limited
+it to some hosts:
+
+```json
+"permissions": { "udp": true },
+"udp": { "broadcastPorts": [7000] },
+```
+
+```lua
+local socket, err = plugin:udpSocket({ port = 0 })   -- port 0: any free one
+socket:onReceive(function(bytes, ip, port) end)
+socket:broadcast(7000, '{"t":"scan"}')                -- true, or nil and an error
+socket:send("192.168.1.40", 7000, packet)
+socket:close()
+```
+
+A broadcast to another port returns nil and an error. A list with something other than whole
+ports, with 1234 or 69, or `"udp"` without `"udp": true` in permissions refuses the manifest;
+`validate.yml` checks it (`.github/scripts/check-udp.py`).
+
 ### Grenton frames, TFTP and serial ports
 
 Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
@@ -946,6 +972,7 @@ On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet 
 | `"internet": ["api.example.com"]` | HTTP to the internet hosts on the list (below) |
 | `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
+| `"udp": true` | a UDP socket for devices on the local network, not the CLU (see below) |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
 | `"grenton_raw": true` | a UDP socket and the CLU cipher (see below); the user allows it in the panel |
 | `"tftp": true` | a TFTP client (see below); the user allows it in the panel |
