@@ -4,19 +4,24 @@
   "version": "1.0.1",
   "description": "Synchronizacja czasu z internetowych serwerów czasu (WorldTimeAPI)",
   "api": 2,
-  "permissions": {"internet": ["worldtimeapi.org"]},
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "worldtimeapi.org"
+      ]
+    }
+  },
   "author": "vCLU",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer", "json"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "timezone": {
       "type": "string",
@@ -36,7 +41,6 @@
       "description": "Automatyczna synchronizacja przy starcie"
     }
   },
-
   "exports": {
     "objects": {
       "current": {

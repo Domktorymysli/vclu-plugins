@@ -42,7 +42,8 @@ end
 --- Install the fake runtime globals.
 -- @param opts table optional { registers = function(reqOpts) -> table,
 --                                http = function(reqOpts) -> response,
---                                dashboards = { id = name } as plugin.json "dashboards" declares }
+--                                dashboards = { id = name } as plugin.json "dashboards" declares,
+--                                actions = { name = { params, confirm } } as plugin.json "actions" declares }
 -- @return table recorder with sensors, pollers, objects, emits, log, clobbered,
 --         kv, dashboards, actions
 function M.install(opts)
@@ -317,30 +318,33 @@ function M.install(opts)
         return (w.onSubmit or w.opts.onAdd)(text)
     end
 
-    -- Actions for agents and voice: plugin:action(name, spec, fn). The stub checks the spec
-    -- and env.callAction checks params against it before calling fn, as the runtime does.
+    -- Actions for agents and voice. plugin.json declares them (opts.actions = { name =
+    -- { params = {...}, confirm = true } }) and the plugin gives each its function:
+    -- plugin:action(name, fn). env.callAction checks params and confirm as vclu does.
     env.actions = {}
     local PARAM_TYPES = { string = "string", number = "number", boolean = "boolean" }
-    function Plugin:action(name, spec, f)
-        if type(name) ~= "string" or not name:match("^[%a][%w_]*$") then error("action(name): name is [a-z_]", 2) end
+    function Plugin:action(name, f, extra)
+        if type(name) ~= "string" or not name:match("^[a-z][a-z0-9_]*$") then error("action(name): name is [a-z0-9_]", 2) end
         if env.actions[name] then error('action("' .. name .. '"): defined twice', 2) end
-        if type(spec) ~= "table" or type(spec.description) ~= "table"
-            or type(spec.description.pl) ~= "string" or type(spec.description.en) ~= "string" then
-            error('action("' .. name .. '"): spec.description = { pl, en }', 2)
+        if type(f) ~= "function" or extra ~= nil then
+            error('action("' .. name .. '", fn): the description and params are in plugin.json "actions"', 2)
         end
+        local spec = (opts.actions or {})[name]
+        if not spec then error('action("' .. name .. '") is not declared: declare it in plugin.json "actions"', 2) end
         for pname, p in pairs(spec.params or {}) do
-            if type(p) ~= "table" or not PARAM_TYPES[p.type] or type(p.description) ~= "table" then
-                error('action("' .. name .. '"): param ' .. tostring(pname) .. " = { type, description = { pl, en } }", 2)
+            if type(p) ~= "table" or not PARAM_TYPES[p.type] then
+                error('action("' .. name .. '"): param ' .. tostring(pname) .. " = { type }", 2)
             end
         end
-        if type(f) ~= "function" then error('action("' .. name .. '"): fn is a function', 2) end
         env.actions[name] = { spec = spec, fn = f }
     end
 
-    --- Call an action as an agent would: nil, error for a missing or mistyped param.
-    function env.callAction(name, params)
+    --- Call an action as an agent would: nil, error for a missing or mistyped param, or
+    -- for one plugin.json marks confirm without confirmed.
+    function env.callAction(name, params, confirmed)
         local a = env.actions[name]
         if not a then return nil, "no action " .. tostring(name) end
+        if a.spec.confirm and confirmed ~= true then return nil, "asks for confirmation" end
         params = params or {}
         for pname, p in pairs(a.spec.params or {}) do
             local v = params[pname]

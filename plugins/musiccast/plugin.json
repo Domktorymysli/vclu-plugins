@@ -4,7 +4,16 @@
   "version": "0.2.0",
   "description": "Factory for Yamaha MusicCast devices over the local YXC API",
   "api": 2,
-  "permissions": {"lan": true},
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {
+    "lan": {
+      "ports": [
+        80
+      ]
+    }
+  },
   "author": "vCLU",
   "config": {}
 }

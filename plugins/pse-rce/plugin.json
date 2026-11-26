@@ -4,7 +4,16 @@
   "version": "0.1.0",
   "description": "Factory for PSE market energy prices (RCE): today and tomorrow every 15 minutes, cheapest hours by RCE, optional own price formula",
   "api": 2,
-  "permissions": {"internet": ["api.raporty.pse.pl"]},
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "api.raporty.pse.pl"
+      ]
+    }
+  },
   "author": "vCLU",
   "config": {}
 }

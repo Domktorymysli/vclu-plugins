@@ -8,7 +8,11 @@ local harness = dofile(here .. "/../../test/harness.lua")
 local check = harness.check
 
 -- as plugin.json declares it
-local env = harness.install({ dashboards = { lista = "Zakupy" } })
+local ITEM = { type = "string", required = true }
+local env = harness.install({ dashboards = { lista = "Zakupy" }, actions = {
+    add = { params = { item = ITEM } }, remove = { params = { item = ITEM } }, done = { params = { item = ITEM } },
+    list = {}, clear_done = {}, clear_all = { confirm = true },
+} })
 local plugin = dofile(here .. "/init.lua")
 plugin._init({})
 
@@ -131,10 +135,7 @@ plugin._init({})
 plugin:clearAll()
 
 local names = {}
-for n, a in pairs(env.actions) do
-    names[#names + 1] = n
-    check("action " .. n .. " has pl and en", a.spec.description.pl ~= "" and a.spec.description.en ~= "")
-end
+for n in pairs(env.actions) do names[#names + 1] = n end
 table.sort(names)
 check("six actions", table.concat(names, ",") == "add,clear_all,clear_done,done,list,remove")
 
@@ -163,15 +164,9 @@ check("remove of a missing item", r == nil and err:find("kawa"))
 r = env.callAction("clear_done")
 check("clear_done", r.removed == 1 and labels() == "mleko")
 r, err = env.callAction("clear_all", {})
-check("clear_all without confirm is refused", r == nil and err and labels() == "mleko")
-r, err = env.actions.clear_all.fn({ confirm = false })
-check("confirm = false is refused", r == nil and err:find("potwierdzenia") and labels() == "mleko")
-r, err = env.actions.clear_all.fn({ confirm = "true" })
-check("confirm must be the boolean true", r == nil and labels() == "mleko")
-r = env.callAction("clear_all", { confirm = true })
-check("clear_all with confirm", r and r.removed == 1 and #plugin:items() == 0)
-check("clear_all asks for confirm in its spec", env.actions.clear_all.spec.params.confirm.required == true
-    and env.actions.clear_all.spec.params.confirm.type == "boolean")
+check("clear_all without confirmation is refused", r == nil and err and labels() == "mleko")
+r = env.callAction("clear_all", {}, true)
+check("clear_all once confirmed", r and r.removed == 1 and #plugin:items() == 0)
 
 --------------------------------------------------------------------------------
 -- Dashboard

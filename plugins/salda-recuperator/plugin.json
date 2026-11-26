@@ -4,19 +4,24 @@
   "version": "2.1.1",
   "description": "Integracja z rekuperatorem Salda - odczyt danych i sterowanie z expose API",
   "api": 2,
-  "permissions": {"lan": true},
+  "permissions": {
+    "lan": {
+      "ports": [
+        80
+      ]
+    }
+  },
   "author": "vCLU",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer", "json"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "ip": {
       "type": "string",
@@ -41,7 +46,6 @@
       "description": "Interwał odczytu danych w sekundach"
     }
   },
-
   "exports": {
     "objects": {
       "data": {
@@ -50,19 +54,55 @@
       }
     },
     "sensors": [
-      { "id": "supplyAir", "type": "temperature", "description": "Temperatura nawiewu" },
-      { "id": "exhaustAir", "type": "temperature", "description": "Temperatura wywiewu" },
-      { "id": "extractAir", "type": "temperature", "description": "Temperatura wyciągu" },
-      { "id": "outsideAir", "type": "temperature", "description": "Temperatura zewnętrzna" },
-      { "id": "humidity", "type": "humidity", "description": "Wilgotność powietrza 0-100%" }
+      {
+        "id": "supplyAir",
+        "type": "temperature",
+        "description": "Temperatura nawiewu"
+      },
+      {
+        "id": "exhaustAir",
+        "type": "temperature",
+        "description": "Temperatura wywiewu"
+      },
+      {
+        "id": "extractAir",
+        "type": "temperature",
+        "description": "Temperatura wyciągu"
+      },
+      {
+        "id": "outsideAir",
+        "type": "temperature",
+        "description": "Temperatura zewnętrzna"
+      },
+      {
+        "id": "humidity",
+        "type": "humidity",
+        "description": "Wilgotność powietrza 0-100%"
+      }
     ],
     "controls": [
-      { "id": "fanSpeed", "type": "fan", "range": "0-4", "description": "Prędkość wentylatora (biegi)" },
-      { "id": "temperature", "type": "number", "range": "15-30", "description": "Temperatura zadana °C" }
+      {
+        "id": "fanSpeed",
+        "type": "fan",
+        "range": "0-4",
+        "description": "Prędkość wentylatora (biegi)"
+      },
+      {
+        "id": "temperature",
+        "type": "number",
+        "range": "15-30",
+        "description": "Temperatura zadana °C"
+      }
     ],
     "events": [
-      { "name": "salda:updated", "description": "Dane zostały zaktualizowane" },
-      { "name": "salda:error", "description": "Błąd komunikacji z rekuperatorem" }
+      {
+        "name": "salda:updated",
+        "description": "Dane zostały zaktualizowane"
+      },
+      {
+        "name": "salda:error",
+        "description": "Błąd komunikacji z rekuperatorem"
+      }
     ]
   }
 }

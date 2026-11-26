@@ -362,18 +362,11 @@ end
 -- Actions for agents and voice assistants
 --------------------------------------------------------------------------------
 
+-- plugin.json "actions" declares them (descriptions, params, confirm for clear_all);
 -- vclu before 1.13 has no actions: the list still works from the dashboard and modules
-local function action(name, spec, fn)
-    if type(plugin.action) == "function" then plugin:action(name, spec, fn) end
+local function action(name, fn)
+    if type(plugin.action) == "function" then plugin:action(name, fn) end
 end
-
-local ITEM = {
-    type = "string", required = true,
-    description = {
-        pl = "Nazwa produktu tak, jak ją powiedział użytkownik, np. „mleko”. Można podać kilka: „mleko, chleb i masło”.",
-        en = "The product name as the user said it, in Polish, e.g. \"mleko\". Several at once: \"mleko, chleb i masło\".",
-    },
-}
 
 local function itemParam(p)
     if type(p) ~= "table" or type(p.item) ~= "string" or normalize(p.item) == "" then
@@ -382,78 +375,35 @@ local function itemParam(p)
     return p.item
 end
 
-action("add", {
-    description = {
-        pl = "Dodaj produkty do listy zakupów. Jeden albo kilka w jednym tekście, z ilością lub bez: „2 mleka, chleb i masło”. Produktu, który już jest na liście, nie dubluje; kupiony wraca na listę.",
-        en = "Add products to the shopping list. One or several in one text, with or without a quantity: \"2 mleka, chleb i masło\". A product already on the list is not duplicated; a bought one goes back on the list.",
-    },
-    params = { item = ITEM },
-}, function(p)
+action("add", function(p)
     local item, err = itemParam(p)
     if not item then return nil, err end
     return plugin:add(item)
 end)
 
-action("remove", {
-    description = {
-        pl = "Usuń produkty z listy zakupów (gdy użytkownik się rozmyślił). Wielkość liter i polskie znaki nie mają znaczenia, wystarczy początek nazwy, jeśli pasuje do jednego produktu.",
-        en = "Remove products from the shopping list (the user changed their mind). Case and Polish diacritics do not matter; the start of a name is enough when it matches one product.",
-    },
-    params = { item = ITEM },
-}, function(p)
+action("remove", function(p)
     local item, err = itemParam(p)
     if not item then return nil, err end
     return plugin:remove(item)
 end)
 
-action("done", {
-    description = {
-        pl = "Oznacz produkty jako kupione („kupiłem mleko”). Zostają na liście przekreślone, dopóki ktoś nie usunie kupionych.",
-        en = "Mark products as bought (\"I bought the milk\"). They stay on the list crossed out until the bought ones are cleared.",
-    },
-    params = { item = ITEM },
-}, function(p)
+action("done", function(p)
     local item, err = itemParam(p)
     if not item then return nil, err end
     return plugin:done(item)
 end)
 
-action("list", {
-    description = {
-        pl = "Co jest do kupienia. Zwraca produkty jeszcze niekupione i gotowe zdanie po polsku do przeczytania (text).",
-        en = "What is left to buy. Returns the products not bought yet and a ready Polish sentence to read out (text).",
-    },
-    params = {},
-}, function()
+action("list", function()
     return plugin:pending()
 end)
 
-action("clear_done", {
-    description = {
-        pl = "Usuń z listy wszystkie kupione produkty. Niekupione zostają.",
-        en = "Remove every bought product from the list. The ones not bought stay.",
-    },
-    params = {},
-}, function()
+action("clear_done", function()
     local n = plugin:clearDone()
     return { removed = n, text = n == 0 and "Nie było kupionych produktów." or ("Usunięto kupione: " .. n .. ".") }
 end)
 
-action("clear_all", {
-    description = {
-        pl = "Wyczyść całą listę zakupów, także niekupione produkty. Nie da się tego cofnąć: najpierw zapytaj użytkownika i wywołaj z confirm = true dopiero po jego potwierdzeniu.",
-        en = "Empty the whole shopping list, the products not bought included. It cannot be undone: ask the user first and call with confirm = true only after they confirm.",
-    },
-    params = {
-        confirm = {
-            type = "boolean", required = true,
-            description = { pl = "true, gdy użytkownik potwierdził wyczyszczenie listy", en = "true once the user confirmed emptying the list" },
-        },
-    },
-}, function(p)
-    if type(p) ~= "table" or p.confirm ~= true then
-        return nil, "wyczyszczenie listy wymaga potwierdzenia użytkownika (confirm = true)"
-    end
+-- "confirm": true in plugin.json: vclu runs it only once the user confirmed
+action("clear_all", function()
     local n = plugin:clearAll()
     return { removed = n, text = "Lista zakupów wyczyszczona (" .. n .. ")." }
 end)

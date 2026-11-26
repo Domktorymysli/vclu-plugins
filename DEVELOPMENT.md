@@ -85,10 +85,10 @@ plugins/my-plugin/
   "license": "MIT",
 
   "api": 2,
-  "permissions": { "internet": ["api.example.com"], "lan": true },
-
-  "requires": {
-    "vclu": ">=1.0.0"
+  "requires": { "vclu": ">=1.13.0" },
+  "permissions": {
+    "internet": { "hosts": ["api.example.com"] },
+    "lan": { "ports": [80], "why": { "pl": "Urządzenie w domu", "en": "The device in the house" } }
   },
 
   "config": {
@@ -592,7 +592,13 @@ Every call into the plugin's code, a timer's included, has a time limit (vclu 1.
 
 ### MQTT
 
-Needs `"mqtt": true` in the permissions of `plugin.json`.
+Needs `"mqtt"` in the permissions of `plugin.json`, with the topic filters it subscribes to and
+publishes on; the plugins page shows them and the user may narrow them. Without either list it
+asks for any topic and needs `"why"`:
+
+```json
+"permissions": { "mqtt": { "subscribe": ["zigbee2mqtt/#"], "publish": ["zigbee2mqtt/+/set"] } }
+```
 
 ```lua
 -- Publish string
@@ -612,16 +618,15 @@ end)
 
 ### UDP to devices
 
-`"udp": true` (vclu 1.13+, plugin API 2) is for devices with a local UDP protocol, such as an air
-conditioner. It needs no `grenton_raw`: installing allows it like `lan`, and the user can limit
-it to some hosts. The socket reaches local addresses only, not the vclu it runs in, not the ports
-vclu listens on and not the CLU ports 1234 and 69 (those need `grenton_raw` or `tftp`). It
-broadcasts only to the ports `plugin.json` lists, at most 8, and not at all when the user limited
-it to some hosts:
+`"udp"` (vclu 1.13+, plugin API 2) is for devices with a local UDP protocol, such as an air
+conditioner. It needs no `clu`: installing allows it like `lan`, and the user can limit it to some
+hosts. The socket sends to local addresses only, on the ports `plugin.json` lists (at most 8),
+not to the vclu it runs in, not to the ports vclu listens on and never to the CLU ports 1234 and
+69 (those belong to `clu` and `tftp`). It broadcasts only to the ports in `broadcast` (among
+`ports`), and not at all when the user limited it to some hosts:
 
 ```json
-"permissions": { "udp": true },
-"udp": { "broadcastPorts": [7000] },
+"permissions": { "udp": { "ports": [7000], "broadcast": [7000] } }
 ```
 
 ```lua
@@ -632,21 +637,15 @@ socket:send("192.168.1.40", 7000, packet)
 socket:close()
 ```
 
-A broadcast to another port returns nil and an error. A list with something other than whole
-ports, with 1234 or 69, or `"udp"` without `"udp": true` in permissions refuses the manifest;
-`validate.yml` checks it (`.github/scripts/check-udp.py`).
-
 ### TCP and telnet
 
-`"tcp": true` (vclu 1.13+, plugin API 2) is for devices with a TCP protocol of their own: a
-local Tuya socket, a telnet console. Installing allows it like `lan`, and the user can limit it
-to some hosts. `plugin.json` lists the ports it connects to, at least one and at most 8; a port
-that belongs to another permission (1234 `grenton_raw`, 69 `tftp`, 502 `modbus`, 1883 and 8883
-`mqtt`) is refused:
+`"tcp"` (vclu 1.13+, plugin API 2) is for devices with a TCP protocol of their own: a local Tuya
+socket, a telnet console. Installing allows it like `lan`, and the user can limit it to some
+hosts. It lists the ports it connects to, at least one and at most 8; a port that belongs to
+another permission (1234 `clu`, 69 `tftp`, 502 `modbus`, 1883 and 8883 `mqtt`) is refused:
 
 ```json
-"permissions": { "tcp": true },
-"tcp": { "ports": [23] },
+"permissions": { "tcp": { "ports": [23] } }
 ```
 
 ```lua
@@ -677,22 +676,18 @@ with DONT, so the device stays in plain line mode, drops subnegotiation and othe
 gives the text as lines (without the line end) and prompts (text without a line end that matches
 a pattern; end it with `$`). `t:send(line)` adds the newline, `t:sendRaw(bytes)` sends as is.
 
-`"tcp"` without `"tcp": true`, the permission without ports, or a port that is not a whole number,
-repeated or of another permission refuses the manifest; `validate.yml` checks it
-(`.github/scripts/check-tcp.py`).
+`validate.yml` checks the manifest as vclu reads it (`.github/scripts/check-manifest.py`).
 
 ### WebSocket
 
 `plugin:websocket(url, opts)` (vclu 1.13+) is a WebSocket client for services that push changes:
 Tuya's message service, Shelly Gen2 (`ws://<ip>/rpc`), Home Assistant. It has no permission of
 its own: it reaches what the plugin's HTTP reaches, an internet host on the `internet` list
-(`wss://` or `ws://`) and a local address with `lan` and its hosts, never the vclu it runs in.
-On the local network only to the ports listed in `plugin.json` (at most 8, none of another
-permission, as `tcp.ports`):
+(`wss://` or `ws://`) and a local address with `lan`, on its ports and hosts, never the vclu it
+runs in:
 
 ```json
-"permissions": { "lan": true },
-"websocket": { "lanPorts": [80, 8123] }
+"permissions": { "lan": { "ports": [80, 8123] } }
 ```
 
 ```lua
@@ -716,22 +711,27 @@ It connects in the background, and a redirect or another HTTP answer to the hand
 
 ### CLU communication, TFTP and serial ports
 
-Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
-They reach a CLU's commands, files on devices and whatever is on a port, so installing a plugin
-does not allow them: the user does, on the plugins page, after a warning. Until then the methods
-below raise an error. The user can also limit `grenton_raw` and `tftp` to some hosts, and assigns
-the serial ports. Neither the socket nor the TFTP client reaches the vclu the plugin runs in or
+Three permissions for plugins that work below HTTP: `"clu"`, `"tftp"` and `"serial"`, each with
+`"why"`. They reach a CLU's commands, files on devices and whatever is on a port, so installing a
+plugin does not allow them: the user does, on the plugins page, after a warning. Until then the
+methods below raise an error. The user can also limit `clu` and `tftp` to some hosts (a list stops
+broadcasts unless the user also allows finding CLUs), and assigns the serial ports. Reading a
+CLU's features through the registry (`_:get("CLU1.DOU1"):get(n)`) needs `clu` too.
+
+```json
+"permissions": { "clu": { "why": { "pl": "Wysyłka konfiguracji do CLU", "en": "Sends the configuration to the CLU" } } }
+``` Neither the socket nor the TFTP client reaches the vclu the plugin runs in or
 anything outside the local network.
 
 ```lua
--- grenton_raw: a UDP socket of the plugin's own (port 0: any free one)
+-- clu: a UDP socket of the plugin's own (port 0: any free one)
 local socket, err = plugin:grentonSocket({ port = 0 })
 socket:onReceive(function(bytes, ip, port) end)
 socket:send("192.168.1.10", 1234, frame)   -- true, or nil and an error
 socket:broadcast(1234, frame)               -- only to the CLU port, for discovery
 socket:close()
 
--- grenton_raw: the CLU cipher; key and IV raw or in base64, as in the CLU's configuration.
+-- clu: the CLU cipher; key and IV raw or in base64, as in the CLU's configuration.
 -- The plugin brings the key (its config); vclu does not hand out its own.
 local cipher = plugin:grentonCipher(config.key, config.iv)
 local plain, err = cipher:decrypt(bytes)
@@ -750,6 +750,31 @@ port:close()
 ```
 
 Bytes are Lua strings. Sockets and ports close when the plugin is disabled or removed.
+
+### Actions
+
+Actions are what voice assistants and agents (MCP) call: "add milk to the shopping list".
+`plugin.json` declares them, so the user sees them when installing and an update that adds one
+waits for the user:
+
+```json
+"actions": [
+  { "name": "add", "description": { "pl": "Dodaj produkty do listy", "en": "Add products to the list" },
+    "params": { "item": { "type": "string", "required": true, "description": { "pl": "…", "en": "…" } } } },
+  { "name": "clear_all", "description": { "pl": "Wyczyść listę", "en": "Empty the list" }, "confirm": true }
+]
+```
+
+```lua
+plugin:action("add", function(params) return plugin:add(params.item) end)   -- nil, err refuses
+plugin:action("clear_all", function() return plugin:clearAll() end)
+```
+
+`name` is a lower-case letter, then up to 63 letters, digits and `_`; at most 32 actions and 32
+params each; a param is `"string"`, `"number"` or `"boolean"`. vclu checks the params before
+calling the function. `"confirm": true` marks an action that cannot be undone: an agent calls it
+only after the user agreed, and plugin code cannot turn that off. `plugin:action` with a name
+`plugin.json` does not declare raises an error.
 
 ### Type Coercion
 
@@ -812,6 +837,9 @@ Persistent key-value storage for plugin state across restarts.
 Storage: /var/lib/vclu/plugins/<plugin-id>.json
 ```
 
+Limits: a key up to 128 characters, a value up to 256 KiB as JSON, the whole store up to 1 MiB;
+`kvSet` over them returns an error and changes nothing.
+
 #### `plugin:kvGet(key, default)`
 
 Get value from persistent storage.
@@ -839,7 +867,7 @@ plugin:kvSet("access_token", token, {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `secure` | boolean | false | Hide from logs, UI, registry export |
+| `secure` | boolean | false | Hide from logs, UI, registry export; the file is not encrypted |
 | `ttl` | number | nil | Time-to-live in seconds |
 
 #### `plugin:kvDelete(key)`
@@ -1046,65 +1074,87 @@ and runs every plugin on the old contract.
 
 ### Permissions
 
-On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet included:
+On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet included. Each
+permission is an object with its parameters; `true` is short for one without any, where that
+does not mean "everything". `"why"` (a text or `{"pl", "en"}`, one line up to 200 characters, no
+markup) goes into the install dialog; a wide permission needs it.
 
-| Permission | Gives |
-|------------|-------|
-| `"internet": ["api.example.com"]` | HTTP and WebSocket to the internet hosts on the list (below) |
-| `"lan": true` | HTTP and WebSocket to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution); never the ports vclu itself listens on; WebSocket only to the ports in `"websocket"` |
-| `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
-| `"udp": true` | a UDP socket for devices on the local network, not the CLU (see below) |
-| `"tcp": true` | TCP connections to devices on the local network, to the ports in `"tcp"` (see below) |
-| `"modbus": true` | the `Modbus` table (requests, reads and writes) |
-| `"grenton_raw": true` | a UDP socket and the CLU cipher (see below); the user allows it in the panel |
-| `"tftp": true` | a TFTP client (see below); the user allows it in the panel |
-| `"serial": true` | a serial port the user assigns to the plugin (see below) |
+| Permission | Gives | Parameters |
+|------------|-------|------------|
+| `"internet"` | HTTP and WebSocket to these internet hosts | `hosts` (required; `["*"]` any host, with `why`) |
+| `"lan"` | HTTP and WebSocket to the house's devices (local addresses, checked after DNS), never vclu's own ports | `ports`; without them any port, with `why` |
+| `"udp"` | a UDP socket for local devices, not the CLU | `ports` (required), `broadcast` (among `ports`) |
+| `"tcp"` | TCP connections to local devices | `ports` (required) |
+| `"mqtt"` | `plugin:mqttSubscribe`, `plugin:mqttPublish` | `subscribe`, `publish` (topic filters); without both any topic, with `why` |
+| `"modbus"` | the `Modbus` table | `true` or `{ "why" }` |
+| `"clu"` | CLU socket, cipher and reads; the user allows it in the panel | `why` (required) |
+| `"tftp"` | a TFTP client; the user allows it in the panel | `why` (required) |
+| `"serial"` | a serial port the user assigns | `why` (required) |
 
-Without the field an API 2 plugin gets none of them; declare `"permissions": {}` when it needs
-none. A plugin that talks to a device whose address the user gives in `create(opts)`
-needs `lan`.
+Ports: at most 8 per list, never one of another permission (1234 `clu`, 69 `tftp`, 502 `modbus`,
+1883 and 8883 `mqtt`). Hosts: at most 32. Topic filters: at most 32.
+
+`"permissions": {}` asks for none; an API 2 plugin without the field does not load. A key or a
+field this vclu does not know (a permission of a newer vclu) refuses the plugin with "needs a
+newer vclu", at download and at load, so a plugin never runs with less than it was written for.
+
+The plugins page shows each permission in one sentence with its parameters and why, marks the
+wide ones (any host, any local port, any topic) and those only the user allows, and warns about
+combinations: reading the house (`lan`, `udp`, `tcp`, `modbus`, `mqtt`) together with the
+internet, `clu` with `tftp` or with the internet.
 
 #### Internet hosts
 
-`internet` (vclu 1.13+, plugin API 2) names the servers the plugin connects to:
-
 | In `permissions` | Means | The plugins page |
 |---|---|---|
-| `"internet": ["openapi.tuyaeu.com", "*.tuyaeu.com"]` | only these hosts | "Internet: connects to: …" |
-| `"internet": "*"` (or `["*"]`) | any host on the internet | a warning: it can connect to any server |
+| `"internet": { "hosts": ["openapi.tuyaeu.com", "*.tuyaeu.com"] }` | only these hosts | "Internet: connects to: …" |
+| `"internet": { "hosts": ["*"], "why": "…" }` | any host on the internet | a warning: it can connect to any server |
 | no `internet` | no internet | "Internet" in grey |
 
 - An entry is a host name, `*.domain` for the domain's subdomains (`*.tuyaeu.com` matches
   `openapi.tuyaeu.com`, not `tuyaeu.com`; add both when the plugin calls both), or an exact IP
-  address. No scheme, path, port or user: `"https://api.example.com/v1"` refuses the whole
-  manifest, at download and at load. A non-ASCII name goes in its `xn--` form.
-- vclu checks the host name in the URL, before the request and after every redirect, not the
-  address it resolves to (cloud addresses change). An IP address in the URL matches only the same
-  address on the list.
-- The LAN is separate: a device in the house needs `lan`, also when its name is on the list, and
-  a plugin with `lan` reaches local addresses without listing them.
+  address. No scheme, path, port or user. A non-ASCII name goes in its `xn--` form.
+- vclu checks the host name in the URL, before the request and after every redirect, and the
+  address it resolves to. An IP address in the URL matches only the same address on the list.
+- The LAN is separate: a device in the house needs `lan`, also when its name is on the list.
 - A request to a host that is not on the list fails with
   `api.example.com is not on the host list of @vclu/foo (permissions.internet)`.
-- The user allows the hosts when installing. An update that adds a host or switches to `"*"`
-  runs with the hosts allowed before until the user allows the new ones in the panel; keep the
-  list exact so the user is not asked again without need.
 - Plugin API 1 (no `"api"`) reaches any host, as before.
 
-In this repository (`validate.yml`, `.github/scripts/check-internet.py`): every `http(s)://`
-host written in the plugin's Lua must be on the list, and `"*"` needs `"internetWhy"` next to
-`permissions` saying which servers and why the user gives them, e.g. a proxy or an InfluxDB
-address from the configuration:
+In this repository every `http(s)://` host written in the plugin's Lua must be on the list
+(`.github/scripts/check-internet.py`).
 
-```json
-"permissions": {"internet": "*", "lan": true},
-"internetWhy": "InfluxDB at the address the user gives (InfluxDB Cloud or a server outside the house)",
-```
+#### What waits for the user
 
-#### Ports
+Installing records what the install dialog showed: the hosts, ports, topic filters and actions.
+An update that asks for more (a new host, `"*"`, a new port, `lan` without ports, a new topic
+filter, a new action, a new permission) runs with what was allowed before until the user allows
+the rest on the plugins page; keep the lists exact so the user is not asked again without need.
+`clu`, `tftp` and `serial` never come with installing. The user may narrow a grant, never widen
+it past `plugin.json`.
 
-Installing records the ports `plugin.json` lists (`udp.broadcastPorts`, `tcp.ports`,
-`websocket.lanPorts`) with the user's permission. An update that adds a port runs with the ports
-allowed before until the user allows the new one in the panel, as for internet hosts.
+#### Requires and newer features
+
+`"requires": { "vclu": ">=1.13.0" }` (only `>=X.Y.Z`) is checked at download and at load: an
+older vclu says to update. Inside plugin API 2 newer vclu versions add methods, permission fields
+and form field types; check with `plugin:has(name)` (a method such as `"websocket"`,
+`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. `plugin:httpGet` and
+`plugin:httpPost` are deprecated (logged once): use `plugin:httpRequest`.
+
+Names kept for later permissions (refused today like any unknown one): `webhooks`, `files`,
+`notify`, `gpio`, `i2c`, `onewire`, and `udp.listen`. A key of your own at the top of
+`plugin.json` starts with `x-`; another key vclu does not read is logged.
+
+#### Never
+
+- A plugin is a client: it does not listen on a port. Incoming requests will come through vclu's
+  own server (`webhooks`), not a socket of the plugin.
+- A plugin does not write the house's objects (registry, CLU): a module of the user maps the
+  plugin's objects to the house.
+- The house's objects reach a plugin as paths (`"CLU2.DOU1"`), read through `_:get(path)`, not as
+  values handed over.
+- Callbacks between a module and a plugin may run later than the call that set them off; do not
+  rely on the order across plugins, nor on sharing a table with a module.
 
 #### Time limit
 

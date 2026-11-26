@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""permissions.internet of an official plugin: a list of hosts as vclu reads them, "*" only
-with "internetWhy", and every internet host written in the plugin's Lua on the list."""
+"""permissions.internet.hosts of an official plugin: every internet host written in the plugin's
+Lua on the list (check-manifest.py checks the entries)."""
 import ipaddress
 import json
 import pathlib
@@ -57,21 +57,8 @@ def main(plugin_dir):
     m = json.loads((d / "plugin.json").read_text())
     perms = m.get("permissions") or {}
     errors = []
-    hosts = []
-    if "internet" in perms:
-        internet = perms["internet"]
-        hosts = [internet] if isinstance(internet, str) else internet
-        if not isinstance(hosts, list) or not hosts:
-            errors.append('"internet" is a list of hosts, or "*"')
-            hosts = []
-        for h in hosts:
-            why = check_entry(h)
-            if why:
-                errors.append(f"internet: {h!r}: {why}")
-        if "*" in hosts and not (isinstance(m.get("internetWhy"), str) and m["internetWhy"].strip()):
-            errors.append('"internet": "*" needs "internetWhy": which servers and why the user gives them')
-    if "internetWhy" in m and "*" not in hosts:
-        errors.append('"internetWhy" is only for "internet": "*"')
+    internet = perms.get("internet")
+    hosts = internet.get("hosts", []) if isinstance(internet, dict) else []
     # a URL written in the code: its host must be on the list (local addresses need lan instead)
     for lua in sorted(d.glob("*.lua")):
         if lua.name == "test.lua":

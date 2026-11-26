@@ -16,3 +16,4 @@ secrets/
 # Build
 *.zip
 dist/
+__pycache__/

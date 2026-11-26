@@ -6,7 +6,13 @@
   "license": "MIT",
   "description": "Pobiera dane pogodowe z OpenWeatherMap i udostępnia w Lua",
   "api": 2,
-  "permissions": {"internet": ["api.openweathermap.org"]},
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "api.openweathermap.org"
+      ]
+    }
+  },
   "docs": [
     {
       "title": "Getting Started",
@@ -14,18 +20,12 @@
     }
   ],
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": [
-      "http",
-      "timer",
-      "json"
-    ]
+    "vclu": ">=1.13.0"
   },
   "config": {
     "apiKey": {
       "type": "string",
       "required": true,
-      "env": "OPENWEATHERMAP_API_KEY",
       "description": "OpenWeatherMap API key"
     },
     "city": {
@@ -58,11 +58,11 @@
     },
     "events": [
       {
-        "name": "OnWeatherChange",
+        "name": "weather:changed",
         "description": "Emitowany gdy zmieni się pogoda"
       },
       {
-        "name": "OnRainAlert",
+        "name": "weather:rain",
         "description": "Emitowany gdy zacznie padać"
       }
     ]

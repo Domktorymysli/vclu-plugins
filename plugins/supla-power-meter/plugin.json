@@ -4,19 +4,24 @@
   "version": "2.1.2",
   "description": "Integracja z licznikiem energii Supla (3-fazowy) przez Direct Links API z expose API",
   "api": 2,
-  "permissions": {"internet": ["*.supla.org"]},
+  "permissions": {
+    "internet": {
+      "hosts": [
+        "*.supla.org"
+      ]
+    }
+  },
   "author": "vCLU Team",
   "license": "MIT",
-
   "docs": [
-    { "title": "Documentation", "file": "README.md" }
+    {
+      "title": "Documentation",
+      "file": "README.md"
+    }
   ],
-
   "requires": {
-    "vclu": ">=1.0.0",
-    "modules": ["http", "timer", "json"]
+    "vclu": ">=1.13.0"
   },
-
   "config": {
     "directUrl": {
       "type": "string",
@@ -31,7 +36,6 @@
       "description": "Interwał odczytu w sekundach"
     }
   },
-
   "exports": {
     "objects": {
       "power": {
@@ -40,26 +44,109 @@
       }
     },
     "sensors": [
-      { "id": "power", "type": "number", "unit": "W", "description": "Moc całkowita" },
-      { "id": "current", "type": "number", "unit": "A", "description": "Prąd całkowity" },
-      { "id": "energy", "type": "number", "unit": "kWh", "description": "Energia pobrana" },
-      { "id": "reverseEnergy", "type": "number", "unit": "kWh", "description": "Energia oddana" },
-      { "id": "frequency", "type": "number", "unit": "Hz", "description": "Częstotliwość sieci" },
-      { "id": "connected", "type": "sensor", "description": "Status połączenia (0/1)" },
-      { "id": "voltage1", "type": "number", "unit": "V", "description": "Napięcie fazy 1" },
-      { "id": "voltage2", "type": "number", "unit": "V", "description": "Napięcie fazy 2" },
-      { "id": "voltage3", "type": "number", "unit": "V", "description": "Napięcie fazy 3" },
-      { "id": "power1", "type": "number", "unit": "W", "description": "Moc fazy 1" },
-      { "id": "power2", "type": "number", "unit": "W", "description": "Moc fazy 2" },
-      { "id": "power3", "type": "number", "unit": "W", "description": "Moc fazy 3" },
-      { "id": "current1", "type": "number", "unit": "A", "description": "Prąd fazy 1" },
-      { "id": "current2", "type": "number", "unit": "A", "description": "Prąd fazy 2" },
-      { "id": "current3", "type": "number", "unit": "A", "description": "Prąd fazy 3" }
+      {
+        "id": "power",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc całkowita"
+      },
+      {
+        "id": "current",
+        "type": "number",
+        "unit": "A",
+        "description": "Prąd całkowity"
+      },
+      {
+        "id": "energy",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Energia pobrana"
+      },
+      {
+        "id": "reverseEnergy",
+        "type": "number",
+        "unit": "kWh",
+        "description": "Energia oddana"
+      },
+      {
+        "id": "frequency",
+        "type": "number",
+        "unit": "Hz",
+        "description": "Częstotliwość sieci"
+      },
+      {
+        "id": "connected",
+        "type": "sensor",
+        "description": "Status połączenia (0/1)"
+      },
+      {
+        "id": "voltage1",
+        "type": "number",
+        "unit": "V",
+        "description": "Napięcie fazy 1"
+      },
+      {
+        "id": "voltage2",
+        "type": "number",
+        "unit": "V",
+        "description": "Napięcie fazy 2"
+      },
+      {
+        "id": "voltage3",
+        "type": "number",
+        "unit": "V",
+        "description": "Napięcie fazy 3"
+      },
+      {
+        "id": "power1",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc fazy 1"
+      },
+      {
+        "id": "power2",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc fazy 2"
+      },
+      {
+        "id": "power3",
+        "type": "number",
+        "unit": "W",
+        "description": "Moc fazy 3"
+      },
+      {
+        "id": "current1",
+        "type": "number",
+        "unit": "A",
+        "description": "Prąd fazy 1"
+      },
+      {
+        "id": "current2",
+        "type": "number",
+        "unit": "A",
+        "description": "Prąd fazy 2"
+      },
+      {
+        "id": "current3",
+        "type": "number",
+        "unit": "A",
+        "description": "Prąd fazy 3"
+      }
     ],
     "events": [
-      { "name": "supla:updated", "description": "Dane zostały zaktualizowane" },
-      { "name": "supla:error", "description": "Błąd komunikacji z API" },
-      { "name": "supla:disconnected", "description": "Licznik rozłączony" }
+      {
+        "name": "supla:updated",
+        "description": "Dane zostały zaktualizowane"
+      },
+      {
+        "name": "supla:error",
+        "description": "Błąd komunikacji z API"
+      },
+      {
+        "name": "supla:disconnected",
+        "description": "Licznik rozłączony"
+      }
     ]
   }
 }
