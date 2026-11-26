@@ -941,7 +941,42 @@ if sensor then
 end
 ```
 
-A module (not a plugin) calls another plugin's methods as before, e.g. `Plugin.getPlugin("@vclu/telegram"):send(...)`.
+A module (not a plugin) calls another plugin's methods, e.g. `Plugin.getPlugin("@vclu/telegram"):send(...)`,
+through the boundary below.
+
+### What crosses between a module and a plugin
+
+On plugin API 2 a module never holds the plugin itself. `Plugin.getPlugin(id)` (and
+`_:get("@ns/id")`) gives it the plugin's methods and the core's `get`, `on`, `getExposed`,
+`dashboardAccess`, `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
+not its config, KV store, timers or its own state (a plugin offers what a module reads as a method). Every value that crosses is one of these
+(vclu 1.13; the same rules hold when each plugin gets its own Lua state):
+
+| What | How it crosses |
+|---|---|
+| number, string, boolean, nil | as it is |
+| plain table (no functions, no metatable) | a copy, both ways; at most 32 levels, no cycles |
+| a table with functions or a metatable, from the plugin | a **handle**: its methods; its plain fields read as copies, never its `_` fields; the same object is always the same handle (`==` works) |
+| a module's function the plugin calls (`onChange`, a callback) | runs **after** the plugin's code, in order; what it returns is lost |
+| a house object (registry, CLU) from a module | read-only for the plugin: give a path (`"CLU220000000.DOU0001"`) for it to act on |
+| a handle of another plugin | refused: give its path or plain data |
+| an error raised across | text: `pcall` gets the message, never a table of the other side (raise a string; vclu enforces it with one Lua state per plugin) |
+
+So, in a module:
+
+```lua
+local tasmota = Plugin.getPlugin("@vclu/tasmota")
+local lamp = tasmota:device({ ip = "192.168.1.50" }):relay(1)  -- a handle
+lamp:switchOn()                                                 -- a method: fine
+lamp.state = 1                                                  -- stays on your handle, the plugin never sees it
+lamp:onChange(function(v) Logger:info(v) end)                   -- called after the plugin's update, not inside it
+```
+
+Not: keep a table you gave the plugin and change it later (the plugin has a copy), read a plugin's
+fields that start with `_`, or use the plugin's timers and store (`plugin:setTimeout`,
+`plugin:kvGet`) from a module — a module has `EventBus:getShared():setTimeout` and its own KV.
+When the plugin stops (turned off, suspended, reloaded) its handles say `@ns/id: stopped`; take
+them again with `Plugin.getPlugin` after it loads.
 
 ---
 

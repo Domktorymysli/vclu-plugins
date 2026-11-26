@@ -178,13 +178,14 @@ EventBus:getShared():on("sun:rise", function(data)
     -- Stopniowo otwieraj rolety
     Rolety:execute("setPosition", 20)
 
-    Plugin.getPlugin("@vclu/sun-position"):setTimeout(10 * 60 * 1000, function()
+    -- timers of the module, not the plugin's
+    EventBus:getShared():setTimeout(function()
         Rolety:execute("setPosition", 50)
-    end)
+    end, 10 * 60 * 1000)
 
-    Plugin.getPlugin("@vclu/sun-position"):setTimeout(20 * 60 * 1000, function()
+    EventBus:getShared():setTimeout(function()
         Rolety:execute("open")
-    end)
+    end, 20 * 60 * 1000)
 end)
 ```
 
