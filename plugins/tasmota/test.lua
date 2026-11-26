@@ -88,6 +88,10 @@ check("the meter goes with relay 1", byId["tasmota_ab12cd_1234_1"].power == true
 check("a one-relay plug", byId["nous_a1t"] and byId["nous_a1t"].relay == 1 and byId["nous_a1t"].ip == "192.168.1.30")
 check("the whole /24 was asked", #env.http >= 255)
 
+local none, noneErr
+plugin._discover({ subnet = "10.0.0.0/24" }, function(rows, err) none, noneErr = rows, err end)
+check("an empty network says where it looked", none == nil and tostring(noneErr):find("10.0.0.0/24", 1, true) ~= nil)
+
 local _, badErr
 plugin._discover({ subnet = "192.168.1.0/16" }, function(rows, err) badErr = err end)
 check("a network other than /24 is refused", badErr ~= nil)

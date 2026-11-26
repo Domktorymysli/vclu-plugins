@@ -2,9 +2,9 @@
   "code": true,
   "settings": {
     "subnet": {
-      "type": "string", "default": "192.168.1.0/24",
+      "type": "string", "required": true,
       "label": { "pl": "Sieć do wyszukiwania", "en": "Network to search" },
-      "description": { "pl": "Sieć /24, w której szukać urządzeń Tasmota, np. 192.168.1.0/24", "en": "A /24 network to search for Tasmota devices, e.g. 192.168.1.0/24" }
+      "description": { "pl": "Sieć /24 urządzeń Tasmota: adres jednego z nich z .0/24 na końcu, np. 192.168.0.0/24", "en": "The /24 network of the Tasmota devices: one's address ending in .0/24, e.g. 192.168.0.0/24" }
     },
     "password": {
       "type": "secret",

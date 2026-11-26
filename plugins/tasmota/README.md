@@ -7,7 +7,7 @@ Do skonfigurowania kreatorem w panelu albo kodem w module. Wymaga vclu 1.13.
 
 Pluginy → Tasmota → Konfiguruj:
 
-1. **Ustawienia.** Sieć, w której szukać urządzeń (`192.168.1.0/24`), hasło WWW urządzeń, jeśli
+1. **Ustawienia.** Sieć, w której są urządzenia (np. `192.168.0.0/24`; bez domyślnej, bo każdy dom ma inną), hasło WWW urządzeń, jeśli
    je ustawiłeś (jedno dla wszystkich, użytkownik `admin`), co ile sekund czytać stan i czy
    utworzyć dashboard.
 2. **Urządzenia.** „Wykryj” pyta każdy adres sieci o `Status 0`, bez hasła; hasło dostaje tylko

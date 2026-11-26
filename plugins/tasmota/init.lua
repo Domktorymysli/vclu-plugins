@@ -285,7 +285,9 @@ plugin:discover(function(cfg, done)
                 if json and (json.Status or json.StatusNET) then
                     for _, row in ipairs(rowsOf(ip, json)) do rows[#rows + 1] = row end
                 end
-                if nextHost > 254 and pending == 0 then
+                if nextHost > 254 and pending == 0 and #rows == 0 then
+                    done(nil, "no Tasmota answered in " .. prefix .. "0/24; is it the network of the devices?")
+                elseif nextHost > 254 and pending == 0 then
                     table.sort(rows, function(x, y) return x.id < y.id end)
                     done(rows)
                 else
