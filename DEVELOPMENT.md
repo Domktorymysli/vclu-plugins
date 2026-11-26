@@ -678,6 +678,32 @@ a pattern; end it with `$`). `t:send(line)` adds the newline, `t:sendRaw(bytes)`
 repeated or of another permission refuses the manifest; `validate.yml` checks it
 (`.github/scripts/check-tcp.py`).
 
+### WebSocket
+
+`plugin:websocket(url, opts)` (vclu 1.13+) is a WebSocket client for services that push changes:
+Tuya's message service, Shelly Gen2 (`ws://<ip>/rpc`), Home Assistant. It has no permission of
+its own: it reaches what the plugin's HTTP reaches, an internet host on the `internet` list
+(`wss://` or `ws://`) and a local address with `lan` and its hosts, never the vclu it runs in.
+
+```lua
+local ws, err = plugin:websocket("wss://mq.example.com/ws", {
+    headers = { Authorization = "Bearer " .. token },   -- not Host, Upgrade, Connection, Sec-WebSocket-*
+    protocols = { "json" },
+    timeout = 10,                                         -- seconds, at most 30
+})
+ws:onOpen(function(protocol) ws:send('{"subscribe":"status"}') end)  -- send works once open
+ws:onMessage(function(data, binary) end)                  -- one whole message, at most 1 MiB
+ws:onClose(function(code, reason) end)                    -- the server or the network ended it
+ws:send(bytes, { binary = true })
+ws:isOpen()
+ws:close(1000, "bye")                                     -- 1000 or 3000-4999; no onClose for your own close
+```
+
+It connects in the background, and a redirect or another HTTP answer to the handshake ends it in
+`onClose` with the status. `send` returns nil and an error before `onOpen`, after the end or with
+1 MiB not sent yet. Reconnecting is the plugin's: start a timer in `onClose`. A user narrowing
+`lan` or the internet list closes the connections it no longer allows.
+
 ### Grenton frames, TFTP and serial ports
 
 Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
@@ -1014,8 +1040,8 @@ On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet 
 
 | Permission | Gives |
 |------------|-------|
-| `"internet": ["api.example.com"]` | HTTP to the internet hosts on the list (below) |
-| `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
+| `"internet": ["api.example.com"]` | HTTP and WebSocket to the internet hosts on the list (below) |
+| `"lan": true` | HTTP and WebSocket to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"udp": true` | a UDP socket for devices on the local network, not the CLU (see below) |
 | `"tcp": true` | TCP connections to devices on the local network, to the ports in `"tcp"` (see below) |
