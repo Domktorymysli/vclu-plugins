@@ -704,7 +704,7 @@ It connects in the background, and a redirect or another HTTP answer to the hand
 1 MiB not sent yet. Reconnecting is the plugin's: start a timer in `onClose`. A user narrowing
 `lan` or the internet list closes the connections it no longer allows.
 
-### Grenton frames, TFTP and serial ports
+### CLU communication, TFTP and serial ports
 
 Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
 They reach a CLU's commands, files on devices and whatever is on a port, so installing a plugin
