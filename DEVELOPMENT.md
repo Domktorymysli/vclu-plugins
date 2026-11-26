@@ -633,6 +633,51 @@ A broadcast to another port returns nil and an error. A list with something othe
 ports, with 1234 or 69, or `"udp"` without `"udp": true` in permissions refuses the manifest;
 `validate.yml` checks it (`.github/scripts/check-udp.py`).
 
+### TCP and telnet
+
+`"tcp": true` (vclu 1.13+, plugin API 2) is for devices with a TCP protocol of their own: a
+local Tuya socket, a telnet console. Installing allows it like `lan`, and the user can limit it
+to some hosts. `plugin.json` lists the ports it connects to, at least one and at most 8; a port
+that belongs to another permission (1234 `grenton_raw`, 69 `tftp`, 502 `modbus`, 1883 and 8883
+`mqtt`) is refused:
+
+```json
+"permissions": { "tcp": true },
+"tcp": { "ports": [23] },
+```
+
+```lua
+local conn, err = plugin:tcpConnect({ host = "192.168.1.20", port = 23, timeout = 5 })
+conn:onConnect(function() conn:send("status\r\n") end)   -- send works once connected
+conn:onReceive(function(bytes) end)                      -- in order, possibly in pieces
+conn:onClose(function(reason) end)                       -- the device or the network ended it
+conn:isOpen()
+conn:close()                                             -- no onClose for your own close
+```
+
+It connects only to an IPv4 address on the local network, not the vclu it runs in, in the
+background (`timeout` in seconds, 5 by default, at most 30). `send` queues the bytes and returns
+nil and an error before `onConnect`, after the end or with 1 MiB not sent yet. A plugin is a
+client only, it does not listen.
+
+For a telnet console wrap the connection; `Telnet` needs no permission of its own:
+
+```lua
+local t = Telnet.wrap(conn)                       -- { newline = "\r\n" } by default
+t:onPrompt("login: $", function() t:send("admin") end)
+t:onPrompt("> $", function() t:send("show status") end)
+t:onLine(function(line) Logger:info(line) end)
+```
+
+`Telnet.wrap` takes the connection's `onReceive`. It answers every DO with WONT and every WILL
+with DONT, so the device stays in plain line mode, drops subnegotiation and other commands, and
+gives the text as lines (without the line end) and prompts (text without a line end that matches
+a pattern; end it with `$`). `t:send(line)` adds the newline, `t:sendRaw(bytes)` sends as is.
+
+`"tcp"` without `"tcp": true`, the permission without ports, or a port that is not a whole number,
+repeated or of another permission refuses the manifest; `validate.yml` checks it
+(`.github/scripts/check-tcp.py`).
+
 ### Grenton frames, TFTP and serial ports
 
 Three permissions for plugins that work below HTTP: `"grenton_raw"`, `"tftp"` and `"serial"`.
@@ -973,6 +1018,7 @@ On plugin API 2 a plugin reaches only what `plugin.json` declares, the internet 
 | `"lan": true` | HTTP to local addresses: the house's devices, `localhost`, private networks (checked after DNS resolution) |
 | `"mqtt": true` | `plugin:mqttSubscribe` and `plugin:mqttPublish` |
 | `"udp": true` | a UDP socket for devices on the local network, not the CLU (see below) |
+| `"tcp": true` | TCP connections to devices on the local network, to the ports in `"tcp"` (see below) |
 | `"modbus": true` | the `Modbus` table (requests, reads and writes) |
 | `"grenton_raw": true` | a UDP socket and the CLU cipher (see below); the user allows it in the panel |
 | `"tftp": true` | a TFTP client (see below); the user allows it in the panel |
