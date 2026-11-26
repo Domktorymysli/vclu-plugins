@@ -314,9 +314,13 @@ local plugin = Plugin:new(id, options)
 
 ```lua
 -- Called when plugin loads with config from .vclu.json
-plugin:onInit(function(config)
+plugin:onInit(function(config, info)
     -- config contains user configuration
     local apiKey = config.apiKey
+    -- info.version: this version; info.previousVersion: the one before an update (vclu 1.13+)
+    if info and info.previousVersion then
+        migrate(info.previousVersion) -- e.g. move KV data or read an old setting's name
+    end
 end)
 
 -- Called when plugin unloads (optional - resources auto-cleanup)
@@ -324,6 +328,13 @@ plugin:onCleanup(function()
     -- Custom cleanup logic
 end)
 ```
+
+`info.previousVersion` is set on the first start after an update and stays until an init
+succeeds, so a migration that fails runs again on the next start: write it so it can run twice.
+It may be newer than `info.version` when the user went back to an older version. A fresh
+install and an ordinary restart have none. Settings saved by the wizard are not migrated by vclu: do not
+change the meaning or type of an existing form field, add a new one and read the old one
+here.
 
 ### HTTP Requests
 
@@ -630,12 +641,16 @@ not to the vclu it runs in, not to the ports vclu listens on and never to the CL
 ```
 
 ```lua
-local socket, err = plugin:udpSocket({ port = 0 })   -- port 0: any free one
-socket:onReceive(function(bytes, ip, port) end)
+local socket, err = plugin:udpSocket()               -- a free port of its own
+socket:onReceive(function(bytes, ip, port) end)       -- answers only (see below)
 socket:broadcast(7000, '{"t":"scan"}')                -- true, or nil and an error
 socket:send("192.168.1.40", 7000, packet)
 socket:close()
 ```
+
+A plugin does not listen: its socket takes a free port (another port is refused) and hears only
+answers, from an address it sent to or, after a broadcast, from a local address with the port it
+broadcast to. Devices that send without being asked wait for `udp.listen`, kept for later.
 
 ### TCP and telnet
 
@@ -724,8 +739,8 @@ CLU's features through the registry (`_:get("CLU1.DOU1"):get(n)`) needs `clu` to
 anything outside the local network.
 
 ```lua
--- clu: a UDP socket of the plugin's own (port 0: any free one)
-local socket, err = plugin:grentonSocket({ port = 0 })
+-- clu: a UDP socket of the plugin's own on a free port; it hears answers only, as udpSocket
+local socket, err = plugin:grentonSocket()
 socket:onReceive(function(bytes, ip, port) end)
 socket:send("192.168.1.10", 1234, frame)   -- true, or nil and an error
 socket:broadcast(1234, frame)               -- only to the CLU port, for discovery
@@ -828,6 +843,8 @@ Keep it in a local variable. **Never put a secret in a sensor, an exposed object
 `createObject`/`upsertObject`, an event or a log line:** other plugins, agents and MQTT/Home
 Assistant read those. vclu masks the plugin's secret values as `***` in what it logs
 (`plugin:log`, `plugin:logSafe`, `Logger`, `print`), as a safety net, not as a way to log them.
+A secret shorter than 4 characters (a PIN) is masked only where it stands alone, not inside a
+longer word or number.
 
 ### Persistence (KV Store)
 
@@ -949,7 +966,9 @@ through the boundary below.
 On plugin API 2 a module never holds the plugin itself. `Plugin.getPlugin(id)` (and
 `_:get("@ns/id")`) gives it the plugin's methods and the core's `get`, `on`, `getExposed`,
 `dashboardAccess`, `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
-not its config, KV store, timers or its own state (a plugin offers what a module reads as a method). Every value that crosses is one of these
+not its config, KV store, timers or its own state (a plugin offers what a module reads as a method).
+Its published sensors and controls (`get`, `listSensorsAndControls`) are readable by modules
+and other plugins, read-only: publish nothing private there. Every value that crosses is one of these
 (vclu 1.13; the same rules hold when each plugin gets its own Lua state):
 
 | What | How it crosses |
@@ -1342,3 +1361,11 @@ Create your own plugin repository:
 ```
 
 2. Add repository in vclu Web UI: **Settings > Plugin Repositories**
+
+The namespace `vclu` is the official repository's: vclu does not offer or install `@vclu/...`
+plugins from any other one, a fork included. Give yours its own namespace.
+
+A listing may give `"sha256": {"plugin.json": "…", "init.lua": "…"}`, the digest of each
+file the version downloads (plugin.json, `files` or else init.lua, and `form`). vclu then
+installs only files that match, all of them. The official repository always gives them:
+`.github/scripts/index-hashes.py` writes them from each version's tag when it is tagged.
