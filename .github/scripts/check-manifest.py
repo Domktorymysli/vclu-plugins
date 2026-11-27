@@ -15,7 +15,7 @@ internet = import_module("check-internet")
 KNOWN_TOP = {"id", "name", "version", "description", "author", "homepage", "license", "tags", "dependencies",
              "configSchema", "docs", "files", "api", "permissions", "requires", "form", "config", "dashboards",
              "actions", "exports", "factory", "profiles", "icon"}
-MOVED = {"udp", "tcp", "websocket", "internetWhy", "minVcluVersion"}
+MOVED = {"minVcluVersion"}  # API 1's key, "requires" on API 2
 RESERVED_PORTS = {1234: "clu", 69: "tftp", 502: "modbus", 1883: "mqtt", 8883: "mqtt"}
 UDP_RESERVED = {1234: "clu", 69: "tftp"}
 ACTION = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -166,7 +166,7 @@ def main(path):
         errors.append('"api": 2')
     for k in m:
         if k in MOVED:
-            errors.append(f'"{k}" moved into "permissions" (or "requires") on plugin API 2')
+            errors.append(f'"{k}" is "requires": {{"vclu": ">=X.Y.Z"}} on plugin API 2')
         elif k not in KNOWN_TOP and not k.startswith("x-"):
             errors.append(f'"{k}": not read by vclu (an author\'s own key starts with "x-")')
     if str(m.get("id", "")).startswith("@"):
@@ -176,9 +176,7 @@ def main(path):
         errors.append('"permissions": an object, {} for none')
         perms = {}
     for name, v in perms.items():
-        if name == "grenton_raw":
-            errors.append('permissions.grenton_raw: on plugin API 2 it is "clu"')
-        elif name not in ("internet", "lan", "udp", "tcp", "mqtt", "modbus", "clu", "tftp", "serial"):
+        if name not in ("internet", "lan", "udp", "tcp", "mqtt", "modbus", "clu", "tftp", "serial"):
             errors.append(f"permissions.{name}: unknown to vclu")
         elif v not in (False, None):
             check_perm(name, v, errors)

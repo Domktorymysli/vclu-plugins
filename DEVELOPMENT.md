@@ -1023,12 +1023,12 @@ local state = {
 }
 ```
 
-### 3. Use poller instead of setInterval + httpGet
+### 3. Use poller instead of setInterval + httpRequest
 
 ```lua
 -- Bad
 plugin:setInterval(60000, function()
-    plugin:httpGet(url, function(resp, err)
+    plugin:httpRequest({ method = "GET", url = url }, function(resp, err)
         -- No retry, no timeout, no inFlight protection
     end)
 end)
@@ -1192,8 +1192,8 @@ it past `plugin.json`.
 `"requires": { "vclu": ">=1.13.0" }` (only `>=X.Y.Z`) is checked at download and at load: an
 older vclu says to update. Inside plugin API 2 newer vclu versions add methods, permission fields
 and form field types; check with `plugin:has(name)` (a method such as `"websocket"`,
-`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. `plugin:httpGet` and
-`plugin:httpPost` are deprecated (logged once): use `plugin:httpRequest`.
+`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. HTTP on plugin API 2 is
+`plugin:httpRequest`; `plugin:httpGet` and `plugin:httpPost` are plugin API 1 only.
 
 Names kept for later permissions (refused today like any unknown one): `webhooks`, `files`,
 `notify`, `gpio`, `i2c`, `onewire`, and `udp.listen`. A key of your own at the top of

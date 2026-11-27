@@ -99,10 +99,10 @@ plugin:clearTimer(id)
 
 ```lua
 -- GET
-plugin:httpGet(url, function(response, err) ... end)
+plugin:httpRequest({ method = "GET", url = url }, function(response, err) ... end)
 
--- POST (data jako table -> JSON)
-plugin:httpPost(url, data, function(response, err) ... end)
+-- POST (json jako table)
+plugin:httpRequest({ method = "POST", url = url, json = data }, function(response, err) ... end)
 ```
 
 ### MQTT

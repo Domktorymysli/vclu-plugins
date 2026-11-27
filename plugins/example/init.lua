@@ -92,7 +92,7 @@ plugin:onCleanup(function()
 end)
 
 --------------------------------------------------------------------------------
--- PRZYKŁAD: Poller (zamiast ręcznego setInterval + httpGet)
+-- PRZYKŁAD: Poller (zamiast ręcznego setInterval + httpRequest)
 --------------------------------------------------------------------------------
 
 local poller = nil
