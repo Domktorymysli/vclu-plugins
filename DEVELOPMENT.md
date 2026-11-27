@@ -965,7 +965,7 @@ through the boundary below.
 
 On plugin API 2 a module never holds the plugin itself. `Plugin.getPlugin(id)` (and
 `_:get("@ns/id")`) gives it the plugin's methods and the core's `get`, `on`, `getExposed`,
-`dashboardAccess`, `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
+`dashboard` (who opens its dashboards), `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
 not its config, KV store, timers or its own state (a plugin offers what a module reads as a method).
 Its published sensors and controls (`get`, `listSensorsAndControls`) are readable by modules
 and other plugins, read-only: publish nothing private there. Every value that crosses is one of these
@@ -1023,12 +1023,12 @@ local state = {
 }
 ```
 
-### 3. Use poller instead of setInterval + httpGet
+### 3. Use poller instead of setInterval + httpRequest
 
 ```lua
 -- Bad
 plugin:setInterval(60000, function()
-    plugin:httpGet(url, function(resp, err)
+    plugin:httpRequest({ method = "GET", url = url }, function(resp, err)
         -- No retry, no timeout, no inFlight protection
     end)
 end)
@@ -1192,8 +1192,8 @@ it past `plugin.json`.
 `"requires": { "vclu": ">=1.13.0" }` (only `>=X.Y.Z`) is checked at download and at load: an
 older vclu says to update. Inside plugin API 2 newer vclu versions add methods, permission fields
 and form field types; check with `plugin:has(name)` (a method such as `"websocket"`,
-`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. `plugin:httpGet` and
-`plugin:httpPost` are deprecated (logged once): use `plugin:httpRequest`.
+`"permission:udp.broadcast"`, `"form:host"`), which never raises an error. HTTP on plugin API 2 is
+`plugin:httpRequest`; `plugin:httpGet` and `plugin:httpPost` are plugin API 1 only.
 
 Names kept for later permissions (refused today like any unknown one): `webhooks`, `files`,
 `notify`, `gpio`, `i2c`, `onewire`, and `udp.listen`. A key of your own at the top of
@@ -1296,10 +1296,15 @@ On API 2 `plugin:dashboard(id)` builds only a declared id, at `/d/<shortId>_<id>
 declared. The plugin may keep it behind login (`:auth("session")`, the default) or a PIN
 (`:auth("pin")`); `:auth("public")`, `:pin()`, `:remote()` and `:roles()` are refused: who else
 opens it is the user's. The plugin wizard shows a Dashboards step for it and writes the user's
-choice as code, which people and agents can also write by hand in a module:
+choice as code, which people and agents can also write by hand in a module, with the same chain
+as any dashboard (no widgets, no `:build()`):
 
 ```lua
-Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", { auth = "public", remote = { roles = { "domownicy" } } })
+Plugin.getPlugin("@vclu/zakupy"):dashboard("lista")
+    :name("Zakupy")
+    :auth("public")
+    :remote({ pin = false })
+    :roles("domownicy")
 ```
 
 `test/harness.lua` checks the same: `harness.install({ dashboards = { lista = "Zakupy" } })`

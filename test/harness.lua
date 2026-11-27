@@ -226,12 +226,12 @@ function M.install(opts)
     -- "<shortId>_<id>". The stub keeps each widget with its callbacks for the test to call.
     -- env.dashboards[realId] = { id, name, icon, auth, poll, built, sections, widgets = { id -> w } }
     -- As in vclu, a plugin keeps a dashboard behind login or a PIN; public, a PIN code, the app
-    -- and roles are the user's (dashboardAccess in a module), so the builder refuses them.
+    -- and roles are the user's (Plugin.getPlugin(id):dashboard(id) in a module), so the builder refuses them.
     env.dashboards = {}
     local AUTHS = { session = true, pin = true }
     local declared = opts.dashboards
     local function userOnly(what)
-        error(":" .. what .. "() is the user's to grant (dashboardAccess in a module), not the plugin's", 3)
+        error(":" .. what .. "() is the user's to grant (Plugin.getPlugin(id):dashboard(id) in a module), not the plugin's", 3)
     end
     local function newBuilder(realId, name)
         local d = { id = realId, name = name, auth = "session", sections = {}, widgets = {}, order = {}, built = false }

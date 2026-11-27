@@ -203,7 +203,7 @@ check("Wyczyść wszystko is held", clearAll.opts.hold == true)
 clearAll.onTap()
 check("Wyczyść wszystko", #plugin:items() == 0 and clearAll.opts.disabled() == true)
 
--- the old wizard settings do nothing now: access is the module's dashboardAccess
+-- the old wizard settings do nothing now: access is the module's :dashboard(id) chain
 env.dashboards = {}
 env.actions = {}
 plugin._cleanup()
