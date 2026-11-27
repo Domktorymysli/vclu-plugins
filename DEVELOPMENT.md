@@ -1310,6 +1310,21 @@ Plugin.getPlugin("@vclu/zakupy"):dashboard("lista")
 `test/harness.lua` checks the same: `harness.install({ dashboards = { lista = "Zakupy" } })`
 refuses an undeclared id, and the builder refuses public, a PIN code, remote and roles.
 
+A plugin's dashboard shows only what the plugin gives it: widgets that name the house's data
+(`chart`, `calendar`, `schedule`, covers and rooms by path) are refused. `bars` takes the
+plugin's own function instead of a metric path (vclu 1.14, `plugin:has("widget:bars")`): it
+returns `{ { t = unix seconds, v = number }, ... }` and the server sums or averages them per
+hour, day, week or month, as long ago as the plugin keeps them. `compare` is a function too.
+
+```lua
+if plugin:has("widget:bars") then
+    dash:bars("gaz", "Zużycie miesięcznie", function() return dailyUsage() end,
+        { range = "365d", bucket = "1mo", agg = "sum", unit = "m³" })
+end
+```
+
+See `plugins/liczniki/`: readings typed in by hand, spread over the days between them.
+
 ## Testing
 
 `test/harness.lua` stands in for the runtime, so a plugin runs under a bare

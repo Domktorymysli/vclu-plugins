@@ -212,6 +212,33 @@ function M.install(opts)
         }
     end
 
+    -- datetime in UTC as the house's zone; env.now is the clock (unix seconds), set it in a test
+    env.now = os.time()
+    local function daysFromCivil(y, m, d)
+        y = m <= 2 and y - 1 or y
+        local era = (y >= 0 and y or y - 399) // 400
+        local yoe = y - era * 400
+        local doy = (153 * (m + (m > 2 and -3 or 9)) + 2) // 5 + d - 1
+        return era * 146097 + yoe * 365 + yoe // 4 - yoe // 100 + doy - 719468
+    end
+    local function dtTable(ts)
+        local t = os.date("!*t", ts)
+        return { year = t.year, month = t.month, day = t.day, hour = t.hour, minute = t.min, second = t.sec,
+            timestamp = ts, date = string.format("%04d-%02d-%02d", t.year, t.month, t.day) }
+    end
+    datetime = {
+        now = function() return dtTable(env.now) end,
+        fromTimestamp = function(ts) return dtTable(math.floor(ts)) end,
+        parse = function(s)
+            local y, m, d = tostring(s):match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+            y, m, d = tonumber(y), tonumber(m), tonumber(d)
+            if not y or m < 1 or m > 12 or d < 1 or d > 31 then return nil, "cannot parse datetime: " .. tostring(s) end
+            local t = dtTable(daysFromCivil(y, m, d) * 86400)
+            if t.month ~= m then return nil, "cannot parse datetime: " .. tostring(s) end
+            return t
+        end,
+    }
+
     -- Timers wait for env.runTimers(); nothing runs on its own.
     env.timers = {}
     local nextTimer = 0
@@ -298,6 +325,12 @@ function M.install(opts)
                 if o and o[k] ~= nil then fn("list", "opts." .. k, o[k]) end
             end
             return widget("list", id, { label = label, getItems = getItems, opts = o })
+        end
+        -- source() -> { {t, v} }: in a plugin a function, never a metric path; compare the same
+        function b:bars(id, label, source, o)
+            fn("bars", "source (a plugin gives a function)", source)
+            if o and o.compare ~= nil then fn("bars", "opts.compare", o.compare) end
+            return widget("bars", id, { label = label, source = source, opts = o })
         end
         function b:build() d.built = true return d end
         return b
