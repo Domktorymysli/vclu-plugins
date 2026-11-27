@@ -846,6 +846,45 @@ Assistant read those. vclu masks the plugin's secret values as `***` in what it 
 A secret shorter than 4 characters (a PIN) is masked only where it stands alone, not inside a
 longer word or number.
 
+### Sign-in from the wizard
+
+A cloud that signs in through its phone app (a QR code to scan, or a link and a short code as in
+the OAuth device code flow, RFC 8628) gets a **Sign in** button in the plugin's wizard with
+`plugin:login` (vclu 1.13+, no permission):
+
+```lua
+plugin:login(function(cfg, show, done)
+    plugin:httpRequest({ url = "https://auth.example.com/device/code", method = "POST" }, function(resp)
+        if resp.err then return done(nil, resp.err) end
+        local d = JSON:decode(resp.body)
+        local shown = { code = d.user_code, url = d.verification_uri, hint = "Confirm in the Example app" }
+        show(shown)  -- or show({ qr = d.qr_text }): vclu draws the QR code from the text
+        local timer
+        timer = setInterval(d.interval * 1000, function()
+            -- false once the user cancelled or the sign-in timed out
+            if not show(shown) then return clearInterval(timer) end
+            plugin:httpRequest({ url = "https://auth.example.com/token", method = "POST",
+                form = { device_code = d.device_code } }, function(r)
+                local t = JSON:decode(r.body or "{}") or {}
+                if t.access_token then
+                    clearInterval(timer)
+                    done({ token = t.access_token, refresh = t.refresh_token })
+                end
+            end)
+        end)
+    end)
+end)
+```
+
+- `show{qr = text}` (up to 1024 bytes) or `show{code = ..., url = "https://..."}`, with an optional
+  `hint`; a later `show` replaces what the panel shows (a code that expired and was renewed).
+- `done(secrets)` saves up to 16 text fields as the plugin's secrets: read them with
+  `plugin:secret(name)`, as the wizard's `secret` fields. `done(nil, err)` shows `err`.
+- One sign-in at a time. It ends after 5 minutes, on "Cancel", when the wizard closes or when the
+  plugin stops; what the plugin calls after that changes nothing. `show` and `done` return `false`
+  then: check one of them in a polling loop and stop its timer.
+- The HTTP calls stay under `permissions.internet`: list the sign-in hosts there.
+
 ### Persistence (KV Store)
 
 Persistent key-value storage for plugin state across restarts.
