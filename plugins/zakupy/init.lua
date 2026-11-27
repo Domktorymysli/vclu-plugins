@@ -4,7 +4,7 @@
 
     Dashboard /d/zakupy_lista, declared in plugin.json, behind login. Who else opens it (no login,
     a PIN, the vclu app, roles) and its name are the user's: the wizard's Dashboards step writes
-    Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", {...}) to modules/plugins/vclu__zakupy.lua.
+    Plugin.getPlugin("@vclu/zakupy"):dashboard("lista"):auth(...) to modules/plugins/vclu__zakupy.lua.
     Actions for agents and voice: add, remove, done, list, clear_done, clear_all.
     From a module:
 
@@ -425,7 +425,7 @@ local function addFromDashboard(text)
     return true
 end
 
--- The name comes from plugin.json; access beyond login is the user's (dashboardAccess)
+-- The name comes from plugin.json; access beyond login is the user's (Plugin.getPlugin(id):dashboard(id) in a module)
 local function buildDashboard()
     if type(plugin.dashboard) ~= "function" then
         plugin:log("warn", "this vclu has no plugin dashboards (1.13 needed)")

@@ -23,12 +23,16 @@ kod decyduje o dostępie, więc ludzie i agenci mogą go też napisać sami, w d
 ```lua
 local zakupy = Plugin.getPlugin("@vclu/zakupy")
 if zakupy then
-    zakupy:dashboardAccess("lista", { name = "Zakupy", auth = "public",
-        remote = { pin = false, roles = { "domownicy", "gosia" } } })
+    zakupy:dashboard("lista")
+        :name("Zakupy")
+        :auth("public")
+        :remote({ pin = false })
+        :roles("domownicy", "gosia")
 end
 ```
 
-`auth` to `"session"`, `"pin"` (wtedy `pin = "1234"`), `"public"` albo `"off"`. Kod z kreatora
+`:auth()` to `"session"`, `"pin"` (wtedy też `:pin("1234")`), `"public"` albo `"off"`, tak jak przy
+każdym dashboardzie. Kod z kreatora
 nadpisuje ręczne zmiany w tym pliku dopiero po pokazaniu różnicy.
 
 ## Dashboard
@@ -101,4 +105,4 @@ end)
 - Jedna lista na dom, bez kategorii i sklepów.
 - Odmiana nie jest rozpoznawana: `2 mleka` i `mleko` to dwa różne produkty.
 - Dashboard, pole „Dodaj”, lista i akcje wymagają vclu 1.13 (dashboardy pluginów i
-  `dashboardAccess`, widgety `input` i `list`, akcje pluginów).
+  dostęp do nich z modułu, widgety `input` i `list`, akcje pluginów).

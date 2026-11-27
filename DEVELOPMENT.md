@@ -965,7 +965,7 @@ through the boundary below.
 
 On plugin API 2 a module never holds the plugin itself. `Plugin.getPlugin(id)` (and
 `_:get("@ns/id")`) gives it the plugin's methods and the core's `get`, `on`, `getExposed`,
-`dashboardAccess`, `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
+`dashboard` (who opens its dashboards), `listSensorsAndControls`, `stats`, `id`, `name` and `version` — no other field:
 not its config, KV store, timers or its own state (a plugin offers what a module reads as a method).
 Its published sensors and controls (`get`, `listSensorsAndControls`) are readable by modules
 and other plugins, read-only: publish nothing private there. Every value that crosses is one of these
@@ -1296,10 +1296,15 @@ On API 2 `plugin:dashboard(id)` builds only a declared id, at `/d/<shortId>_<id>
 declared. The plugin may keep it behind login (`:auth("session")`, the default) or a PIN
 (`:auth("pin")`); `:auth("public")`, `:pin()`, `:remote()` and `:roles()` are refused: who else
 opens it is the user's. The plugin wizard shows a Dashboards step for it and writes the user's
-choice as code, which people and agents can also write by hand in a module:
+choice as code, which people and agents can also write by hand in a module, with the same chain
+as any dashboard (no widgets, no `:build()`):
 
 ```lua
-Plugin.getPlugin("@vclu/zakupy"):dashboardAccess("lista", { auth = "public", remote = { roles = { "domownicy" } } })
+Plugin.getPlugin("@vclu/zakupy"):dashboard("lista")
+    :name("Zakupy")
+    :auth("public")
+    :remote({ pin = false })
+    :roles("domownicy")
 ```
 
 `test/harness.lua` checks the same: `harness.install({ dashboards = { lista = "Zakupy" } })`
