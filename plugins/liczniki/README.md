@@ -54,10 +54,41 @@ tylko to, co wynika z odczytów.
 |---|---|---|
 | `add_reading` | `meter`, `value`, `date`? | zapisuje odczyt; zwraca zużycie od poprzedniego |
 | `status` | | stan wszystkich liczników z gotowym zdaniem (`text`) |
+| `export` | `meter`? | odczyty jako CSV (`csv`), wszystkie albo jednego licznika |
 | `add_meter` | `name`, `unit`? | dodaje licznik |
-| `remove_reading` | `meter`, `date`?, `confirm` | usuwa odczyt z dnia albo ostatni; tylko po potwierdzeniu |
+| `remove_reading` | `meter`, `date`? | usuwa odczyt z dnia albo ostatni; tylko po potwierdzeniu |
 
 „Zapisz gaz 1234 i pół” to `add_reading` z `meter = "gaz"`, `value = 1234.5`.
+
+## Dane do analizy
+
+Odczyty są w magazynie pluginu, nie w metrykach vclu, więc nie widać ich w Grafanie ani w Influksie.
+Wyciągasz je jako CSV, który otwiera Excel, LibreOffice i Google Sheets (średnik, przecinek
+dziesiętny, UTF-8):
+
+```
+licznik;data;stan;jednostka;zużycie
+Gaz;2026-09-01;1000;m³;
+Gaz;2026-10-01;1100;m³;100
+```
+
+`zużycie` to przyrost od poprzedniego odczytu tego licznika.
+
+- **Agent** (Claude, ChatGPT z MCP vclu): „wyeksportuj liczniki do CSV” uruchamia akcję `export`,
+  agent zapisuje plik.
+- **HTTP**, z kluczem API z panelu (Ustawienia):
+
+  ```sh
+  curl -s -X POST -H "X-API-Key: <klucz>" -d '{}' \
+    http://<adres-vclu>/api/plugins/%40vclu%2Fliczniki/actions/export | jq -r .result.csv > liczniki.csv
+  ```
+
+  `-d '{"meter":"gaz"}'` daje jeden licznik.
+- **Moduł**: `liczniki:csv()` albo `liczniki:readings("gaz")`, np. żeby co miesiąc wysłać plik
+  mailem albo zapisać odczyty w Influksie.
+
+Sam magazyn to plik `clu/kv/vclu--liczniki.json` w katalogu danych vclu; nie edytuj go przy
+działającym vclu.
 
 ## Kod w module
 
@@ -91,13 +122,16 @@ Tak samo można zapisywać odczyty z licznika, który vclu czyta sam, np. raz w 
 | `liczniki:meters()` | `{ id, name, unit, icon, readings, last = { date, v } }` |
 | `liczniki:readings(meter)` | odczyty od najstarszego: `{ date, t, v }` |
 | `liczniki:status()` | `{ meters, text }`, jak akcja `status` |
+| `liczniki:csv(meter?)` | odczyty jako CSV i liczba wierszy, jak akcja `export` |
 | `liczniki:onReading(fn(meter, reading))` | po każdym nowym odczycie; zwraca funkcję, która wyrejestrowuje `fn` |
 
 `meter` to id (`gaz`), nazwa albo jej słowo.
 
 ## Ograniczenia
 
-- Do 20 liczników, do 3000 odczytów na licznik, nazwa do 40 znaków.
+- Do 20 liczników, do 3000 odczytów na licznik, nazwa do 40 znaków. Cały magazyn pluginu ma 1 MiB:
+  odczyt co dzień z 20 liczników to około 4 lat, co miesiąc to setki lat. Gdy miejsce się
+  skończy, nowy odczyt jest odrzucany z komunikatem, a zapisane zostają.
 - Wymiana licznika (stan od zera) nie jest jeszcze obsługiwana: najprościej dodać nowy licznik.
 - Bez cen i kosztów: na razie tylko zużycie.
 - Wykres sięga dwóch lat wstecz (rok i porównanie z poprzednim), odczyty zostają wszystkie.

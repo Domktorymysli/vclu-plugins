@@ -14,6 +14,7 @@ local env = harness.install({ dashboards = { odczyty = "Liczniki" }, actions = {
     status = {},
     add_meter = { params = { name = { type = "string", required = true }, unit = S } },
     remove_reading = { params = { meter = { type = "string", required = true }, date = S }, confirm = true },
+    export = { params = { meter = S } },
 } })
 
 local function at(date, hour)
@@ -161,6 +162,44 @@ check("a meter with readings is not deleted from the dashboard", not ok and tost
 check("a meter without them is", meters.opts.onDelete("prad") and #plugin:meters() == 3 and dash().widgets.prad_readings == nil)
 check("a meter added on the dashboard", env.submit(DASH, "meters", "Ciepło"):find("^Dodano Ciepło") and dash().widgets.cieplo_readings)
 check("meters list notes", meters.getItems()[1].note == "4 odczyty" and meters.getItems()[4].note == "bez odczytów")
+
+--------------------------------------------------------------------------------
+-- Units from the name, export, a full store
+--------------------------------------------------------------------------------
+
+local function unitFor(name)
+    local m = plugin:addMeter(name)
+    plugin:removeMeter(m.id)
+    return m.unit
+end
+check("a word's start, not inside a word", unitFor("Magazyn energii") == "kWh" and unitFor("Przewód kuchnia") == "")
+check("a heat pump's sub-meter is electricity", unitFor("Podlicznik pompa ciepła") == "kWh" and unitFor("Prąd pompa ciepła") == "kWh")
+check("heat and hot water", unitFor("Licznik ciepła") == "GJ" and unitFor("Ciepła woda") == "m³")
+
+local csv, rows = plugin:csv("gaz")
+check("csv of a meter: decimal comma, the usage since the previous", rows == 4 and csv == "licznik;data;stan;jednostka;zużycie\n"
+    .. "Gaz;2026-09-01;1000,00;m³;\nGaz;2026-09-15;1040,00;m³;40,00\nGaz;2026-10-01;1100,00;m³;60,00\nGaz;2026-11-26;1175,00;m³;75,00\n")
+local all = plugin:csv()
+check("csv of all meters", select(2, all:gsub("\n", "")) == 1 + #plugin:readings("gaz") + #plugin:readings("woda") + #plugin:readings("garaz"))
+r = env.callAction("export", {})
+check("export from an agent", r and r.csv == all and r.text:find("^Eksport CSV: %d+ odczyt") ~= nil)
+plugin:addMeter("Woda; dom")
+plugin:addReading("woda_dom", 1)
+check("a field with ; is quoted", plugin:csv("woda_dom"):find('\n"Woda; dom";') ~= nil)
+plugin:removeMeter("woda_dom")
+_, err = plugin:csv("prąd")
+check("export of an unknown meter", err ~= nil and err:find("nie ma licznika") == 1)
+
+local nBefore, lastBefore = #plugin:readings("gaz"), plugin:readings("gaz")[#plugin:readings("gaz")].v
+env.kvFail = "kv: the plugin's store is up to 1024 KiB"
+r, err = plugin:addReading("gaz", 1300)
+check("a full store refuses the reading", r == nil and err:find("^nie udało się zapisać") ~= nil
+    and #plugin:readings("gaz") == nBefore and plugin:readings("gaz")[nBefore].v == lastBefore)
+r, err = plugin:addMeter("Olej")
+check("and the meter", r == nil and err:find("^nie udało się zapisać") ~= nil and #plugin:meters() == 4)
+ok, e = env.submit(DASH, "gaz_readings", "1300")
+check("the dashboard says it", ok == false and e:find("nie udało się zapisać") ~= nil)
+env.kvFail = nil
 
 --------------------------------------------------------------------------------
 -- Kept in the store

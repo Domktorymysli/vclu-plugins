@@ -4,7 +4,7 @@
 
     Dashboard /d/liczniki_odczyty, declared in plugin.json, behind login. Who else opens it is the
     user's: Plugin.getPlugin("@vclu/liczniki"):dashboard("odczyty"):auth(...) in a module.
-    Actions for agents and voice: add_reading, status, add_meter, remove_reading.
+    Actions for agents and voice: add_reading, status, add_meter, remove_reading, export (CSV).
     From a module:
 
         local liczniki = Plugin.getPlugin("@vclu/liczniki")
@@ -83,16 +83,18 @@ local UNITS = { m3 = "m³", ["m³"] = "m³", kwh = "kWh", mwh = "MWh", gj = "GJ"
     kg = "kg", t = "t", h = "h", mth = "mth" }
 
 -- What a name says without a unit: the unit and the icon
+-- (the start of a word, in this order: "Podlicznik pompa ciepła" is kWh, "Ciepła woda" m³)
 local KINDS = {
-    { "gaz", "m³", "fire" }, { "wod", "m³", "droplet" }, { "ciepl", "GJ", "thermometer-half" },
+    { "gaz", "m³", "fire" }, { "wod", "m³", "droplet" },
     { "prad", "kWh", "lightning-charge" }, { "energ", "kWh", "lightning-charge" }, { "podlicznik", "kWh", "lightning-charge" },
-    { "pv", "kWh", "sun" }, { "fotowolt", "kWh", "sun" }, { "olej", "l", "fuel-pump" }, { "pellet", "kg", "fire" },
+    { "pv", "kWh", "sun" }, { "fotowolt", "kWh", "sun" }, { "ciepl", "GJ", "thermometer-half" },
+    { "olej", "l", "fuel-pump" }, { "pellet", "kg", "fire" },
 }
 
 local function kindOf(name, unit)
-    local k = key(name)
+    local words = " " .. (key(name):gsub("[^a-z0-9]+", " "))
     for _, kind in ipairs(KINDS) do
-        if k:find(kind[1], 1, true) then return unit or kind[2], kind[3] end
+        if words:find(" " .. kind[1], 1, true) then return unit or kind[2], kind[3] end
     end
     if unit == "kWh" or unit == "MWh" then return unit, "lightning-charge" end
     return unit or "", "speedometer2"
@@ -172,10 +174,15 @@ end
 -- Meters and readings
 --------------------------------------------------------------------------------
 
+-- true, or nil and why the store refused it (it is full: 1 MiB for the plugin)
 local function save(id)
-    plugin:kvSet("meters", meters)
-    if id then plugin:kvSet("r_" .. id, readings[id] or {}) end
     state.version = state.version + 1
+    local ok, err = true, nil
+    if id then ok, err = plugin:kvSet("r_" .. id, readings[id] or {}) end
+    if ok then ok, err = plugin:kvSet("meters", meters) end
+    if ok then return true end
+    plugin:log("warn", "kv: " .. tostring(err))
+    return nil, "nie udało się zapisać (" .. tostring(err) .. ")"
 end
 
 local function restore()
@@ -255,7 +262,12 @@ function plugin:addMeter(text, unit)
     local m = { id = id, name = name, unit = u, icon = icon, decimals = 0 }
     meters[#meters + 1] = m
     readings[id] = {}
-    save(id)
+    local saved, serr = save(id)
+    if not saved then
+        meters[#meters] = nil
+        readings[id] = nil
+        return nil, serr
+    end
     ui.build()
     return copyMeter(m)
 end
@@ -328,11 +340,16 @@ function plugin:addReading(meterText, value, date)
     end
     if not replaced and #list >= MAX_READINGS then return nil, "najwyżej " .. MAX_READINGS .. " odczytów licznika" end
 
-    local r = { t = t, v = v }
+    local r, old, oldDecimals = { t = t, v = v }, list[at], m.decimals
     if replaced then list[at] = r else table.insert(list, at, r) end
     if decimals > m.decimals then m.decimals = math.min(3, decimals) end
     memo[m.id] = nil
-    save(m.id)
+    local saved, serr = save(m.id)
+    if not saved then
+        if replaced then list[at] = old else table.remove(list, at) end
+        m.decimals = oldDecimals
+        return nil, serr
+    end
 
     local out = { meter = copyMeter(m), date = d, value = v, replaced = replaced }
     local parts = { m.name .. ": " .. show(m, v) .. (d == today.date and "" or (" z " .. plDate(d))) .. "." }
@@ -395,6 +412,34 @@ function plugin:readings(meterText)
     local out = {}
     for i, r in ipairs(readings[m.id]) do out[i] = { date = dateOf(r.t), t = r.t, v = r.v } end
     return out
+end
+
+local function csvField(s)
+    s = tostring(s)
+    if s:find('[;"\n]') then return '"' .. s:gsub('"', '""') .. '"' end
+    return s
+end
+
+--- The readings as CSV for a spreadsheet (";" and a decimal comma, as Excel in Polish reads it):
+-- licznik;data;stan;jednostka;zużycie, the usage since the meter's previous reading.
+-- meterText: one meter, default all of them. @return string, rows or nil, error
+function plugin:csv(meterText)
+    local list = meters
+    if meterText ~= nil and trim(meterText) ~= "" then
+        local m, err = find(meterText)
+        if not m then return nil, err end
+        list = { m }
+    end
+    local lines = { "licznik;data;stan;jednostka;zużycie" }
+    for _, m in ipairs(list) do
+        local prev
+        for _, r in ipairs(readings[m.id]) do
+            lines[#lines + 1] = table.concat({ csvField(m.name), dateOf(r.t), fmt(r.v, m.decimals), csvField(m.unit),
+                prev and fmt(r.v - prev.v, m.decimals) or "" }, ";")
+            prev = r
+        end
+    end
+    return table.concat(lines, "\n") .. "\n", #lines - 1
 end
 
 --- cb(meter, reading) after every new reading. Returns a function that unsubscribes.
@@ -546,6 +591,13 @@ action("add_meter", function(p)
     local m, err = plugin:addMeter(p.name, p.unit)
     if not m then return nil, err end
     return { meter = m, text = "Dodano licznik " .. m.name .. unitOf(m) .. "." }
+end)
+
+action("export", function(p)
+    p = type(p) == "table" and p or {}
+    local csv, rows = plugin:csv(p.meter)
+    if not csv then return nil, rows end
+    return { csv = csv, rows = rows, text = "Eksport CSV: " .. readingsCount(rows) .. "." }
 end)
 
 -- "confirm": true in plugin.json: vclu runs it only once the user confirmed

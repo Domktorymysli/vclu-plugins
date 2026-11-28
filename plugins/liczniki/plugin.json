@@ -2,7 +2,7 @@
   "id": "liczniki",
   "name": "Liczniki",
   "version": "1.0.0",
-  "description": "Meters read by hand (gas, water, a sub-meter, electricity): readings, usage per month on a chart, actions for agents and voice",
+  "description": "Meters read by hand (gas, water, a sub-meter, electricity): readings, usage per month on a chart, CSV export, actions for agents and voice",
   "api": 2,
   "requires": {
     "vclu": ">=1.13.0"
@@ -78,6 +78,22 @@
       "description": {
         "pl": "Stan wszystkich liczników: ostatni odczyt i jego data, średnie zużycie dziennie, zużycie w poprzednim miesiącu, z gotowym zdaniem po polsku (text).",
         "en": "Every meter: the last reading and its date, the usage per day, the usage last month, with a ready Polish sentence (text)."
+      }
+    },
+    {
+      "name": "export",
+      "description": {
+        "pl": "Wszystkie odczyty jako CSV do arkusza (Excel, LibreOffice, Google Sheets): licznik;data;stan;jednostka;zużycie, z przecinkiem dziesiętnym. Gdy użytkownik chce dane do analizy albo kopię odczytów: zapisz pole csv do pliku .csv.",
+        "en": "All readings as CSV for a spreadsheet (Excel, LibreOffice, Google Sheets): licznik;data;stan;jednostka;zużycie, with a decimal comma. When the user wants the data for analysis or a copy of the readings: save the csv field to a .csv file."
+      },
+      "params": {
+        "meter": {
+          "type": "string",
+          "description": {
+            "pl": "Tylko ten licznik, np. „gaz”; bez niego wszystkie.",
+            "en": "Only this meter, e.g. \"gaz\"; without it all of them."
+          }
+        }
       }
     },
     {

@@ -155,7 +155,12 @@ function M.install(opts)
         if env.kv[key] == nil then return default end
         return deepCopy(env.kv[key])
     end
-    function Plugin:kvSet(key, value) env.kv[key] = deepCopy(value); return true end
+    -- env.kvFail = "why": every kvSet is refused, as the runtime does when the store is full
+    function Plugin:kvSet(key, value)
+        if env.kvFail then return false, env.kvFail end
+        env.kv[key] = deepCopy(value)
+        return true
+    end
     function Plugin:kvDelete(key) env.kv[key] = nil; return true end
 
     function Plugin:url(base, params)
