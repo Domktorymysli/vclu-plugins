@@ -1,0 +1,149 @@
+{
+  "id": "liczniki",
+  "name": "Liczniki",
+  "version": "1.0.0",
+  "description": "Meters read by hand (gas, water, a sub-meter, electricity): readings, usage per month on a chart, CSV export, actions for agents and voice",
+  "api": 2,
+  "requires": {
+    "vclu": ">=1.13.0"
+  },
+  "permissions": {},
+  "author": "vCLU",
+  "files": [
+    "init.lua",
+    "README.md"
+  ],
+  "dashboards": [
+    {
+      "id": "odczyty",
+      "name": {
+        "pl": "Liczniki",
+        "en": "Meters"
+      },
+      "description": {
+        "pl": "Odczyty liczników wpisywane z telefonu i zużycie miesięcznie",
+        "en": "Meter readings typed in from a phone, and the usage per month"
+      }
+    }
+  ],
+  "docs": [
+    {
+      "title": "README",
+      "file": "README.md"
+    }
+  ],
+  "tags": [
+    "meters",
+    "energy",
+    "water",
+    "gas",
+    "dashboard",
+    "voice"
+  ],
+  "actions": [
+    {
+      "name": "add_reading",
+      "description": {
+        "pl": "Zapisz odczyt licznika („gaz 1234,5”, „woda wczoraj 87,2”). Bez daty to odczyt z dzisiaj; drugi odczyt z tego samego dnia zastępuje pierwszy. Licznik tylko rośnie: wartość mniejsza od wcześniejszego odczytu jest odrzucana. Zwraca zużycie od poprzedniego odczytu.",
+        "en": "Save a meter reading (\"gaz 1234,5\", \"woda wczoraj 87,2\"). Without a date it is today's; a second reading of the same day replaces the first. A meter only grows: a value below an earlier reading is refused. Returns the usage since the previous reading."
+      },
+      "params": {
+        "meter": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Licznik tak, jak go nazwał użytkownik, np. „gaz”, „woda”, „podlicznik garaż”. Wystarczy początek nazwy.",
+            "en": "The meter as the user named it, in Polish, e.g. \"gaz\", \"woda\", \"podlicznik garaż\". The start of the name is enough."
+          }
+        },
+        "value": {
+          "type": "number",
+          "required": true,
+          "description": {
+            "pl": "Stan licznika, np. 1234.5 (użytkownik mówi „1234 i pół” albo „1234,5”).",
+            "en": "The meter's reading, e.g. 1234.5 (the user says \"1234,5\")."
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": {
+            "pl": "Dzień odczytu, gdy nie dzisiaj: YYYY-MM-DD, „20.11” albo „wczoraj”.",
+            "en": "The day of the reading when not today: YYYY-MM-DD, \"20.11\" or \"wczoraj\"."
+          }
+        }
+      }
+    },
+    {
+      "name": "status",
+      "description": {
+        "pl": "Stan wszystkich liczników: ostatni odczyt i jego data, średnie zużycie dziennie, zużycie w poprzednim miesiącu, z gotowym zdaniem po polsku (text).",
+        "en": "Every meter: the last reading and its date, the usage per day, the usage last month, with a ready Polish sentence (text)."
+      }
+    },
+    {
+      "name": "export",
+      "description": {
+        "pl": "Wszystkie odczyty jako CSV do arkusza (Excel, LibreOffice, Google Sheets): licznik;data;stan;jednostka;zużycie, z przecinkiem dziesiętnym. Gdy użytkownik chce dane do analizy albo kopię odczytów: zapisz pole csv do pliku .csv.",
+        "en": "All readings as CSV for a spreadsheet (Excel, LibreOffice, Google Sheets): licznik;data;stan;jednostka;zużycie, with a decimal comma. When the user wants the data for analysis or a copy of the readings: save the csv field to a .csv file."
+      },
+      "params": {
+        "meter": {
+          "type": "string",
+          "description": {
+            "pl": "Tylko ten licznik, np. „gaz”; bez niego wszystkie.",
+            "en": "Only this meter, e.g. \"gaz\"; without it all of them."
+          }
+        }
+      }
+    },
+    {
+      "name": "add_meter",
+      "description": {
+        "pl": "Dodaj nowy licznik, gdy użytkownik o to prosi („dodaj licznik wody w ogrodzie”). Nazwy gaz, woda, prąd, ciepło same dobierają jednostkę.",
+        "en": "Add a new meter when the user asks (\"dodaj licznik wody w ogrodzie\"). The names gaz, woda, prąd, ciepło bring their unit."
+      },
+      "params": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Nazwa licznika po polsku, np. „Woda ogród”, „Podlicznik garaż”.",
+            "en": "The meter's name in Polish, e.g. \"Woda ogród\", \"Podlicznik garaż\"."
+          }
+        },
+        "unit": {
+          "type": "string",
+          "description": {
+            "pl": "Jednostka, gdy nazwa jej nie mówi: m³, kWh, GJ, l, kg.",
+            "en": "The unit when the name does not say it: m³, kWh, GJ, l, kg."
+          }
+        }
+      }
+    },
+    {
+      "name": "remove_reading",
+      "description": {
+        "pl": "Usuń błędny odczyt licznika: z podanego dnia albo ostatni. Tylko gdy użytkownik o to prosi.",
+        "en": "Remove a wrong meter reading: of the given day, or the last one. Only when the user asks."
+      },
+      "params": {
+        "meter": {
+          "type": "string",
+          "required": true,
+          "description": {
+            "pl": "Licznik, np. „gaz”.",
+            "en": "The meter, e.g. \"gaz\"."
+          }
+        },
+        "date": {
+          "type": "string",
+          "description": {
+            "pl": "Dzień odczytu do usunięcia (YYYY-MM-DD albo „20.11”); bez niego ostatni odczyt.",
+            "en": "The day of the reading to remove (YYYY-MM-DD or \"20.11\"); without it the last reading."
+          }
+        }
+      },
+      "confirm": true
+    }
+  ]
+}
